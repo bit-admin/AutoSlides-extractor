@@ -1,5 +1,5 @@
 {
-  "name": "downloadslides",
+  "name": "autoslides-extractor",
   "version": "1.0.0",
   "main": "src/main/main.js",
   "scripts": {

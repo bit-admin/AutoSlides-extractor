@@ -1,71 +1,71 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>幻灯片提取器</title>
+  <title>AutoSlides Extractor</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>视频幻灯片提取器</h1>
+      <h1>AutoSlides Extractor</h1>
     </header>
     
     <main>
       <section class="input-section">
         <div class="form-group">
-          <label for="inputVideo">视频文件:</label>
+          <label for="inputVideo">Video File:</label>
           <div class="input-with-button">
-            <input type="text" id="inputVideo" readonly placeholder="选择视频文件...">
-            <button id="btnSelectVideo">浏览</button>
+            <input type="text" id="inputVideo" readonly placeholder="Select video file...">
+            <button id="btnSelectVideo">Browse</button>
           </div>
         </div>
         
         <div class="form-group">
-          <label for="inputOutputDir">输出目录:</label>
+          <label for="inputOutputDir">Output Directory:</label>
           <div class="input-with-button">
-            <input type="text" id="inputOutputDir" readonly placeholder="选择输出目录...">
-            <button id="btnSelectDir">浏览</button>
+            <input type="text" id="inputOutputDir" readonly placeholder="Select output directory...">
+            <button id="btnSelectDir">Browse</button>
           </div>
         </div>
         
         <div class="form-group">
-          <label for="inputCheckInterval">抽帧间隔 (秒):</label>
+          <label for="inputCheckInterval">Frame Interval (seconds):</label>
           <input type="number" id="inputCheckInterval" min="0.5" max="10" step="0.5" value="2">
         </div>
       </section>
       
       <section class="settings-section">
-        <h2>检测设置</h2>
+        <h2>Detection Settings</h2>
         <div class="form-group">
-          <label for="comparisonMethod">比较方法:</label>
+          <label for="comparisonMethod">Comparison Method:</label>
           <select id="comparisonMethod">
-            <option value="default">默认 (pHash + SSIM)</option>
-            <option value="perceptual">感知哈希 (pHash)</option>
-            <option value="basic">基本像素比较</option>
+            <option value="default">Default (pHash + SSIM)</option>
+            <option value="perceptual">Perceptual Hash (pHash)</option>
+            <option value="basic">Basic Pixel Comparison</option>
           </select>
         </div>
         
         <div class="form-group">
-          <label for="hammingThresholdUp">汉明距离阈值 (上限):</label>
+          <label for="hammingThresholdUp">Hamming Distance Threshold (Upper):</label>
           <input type="number" id="hammingThresholdUp" min="1" max="20" step="1" value="5">
         </div>
         
         <div class="form-group">
-          <label for="ssimThreshold">SSIM阈值:</label>
+          <label for="ssimThreshold">SSIM Threshold:</label>
           <input type="number" id="ssimThreshold" min="0.9" max="0.9999" step="0.0001" value="0.999">
         </div>
         
         <div class="form-group checkbox-group">
           <input type="checkbox" id="enableDoubleVerification" checked>
-          <label for="enableDoubleVerification">启用二次校验 (确保连续2帧相同)</label>
+          <label for="enableDoubleVerification">Enable Double Verification (Ensure 2 consecutive frames are identical)</label>
         </div>
       </section>
       
       <section class="action-section">
-        <button id="btnStartProcess" class="primary-button">开始处理</button>
-        <button id="btnStopProcess" class="secondary-button" disabled>停止处理</button>
+        <button id="btnStartProcess" class="primary-button">Start Processing</button>
+        <button id="btnStopProcess" class="secondary-button" disabled>Stop Processing</button>
       </section>
       
       <section class="progress-section">
@@ -75,37 +75,37 @@
           </div>
           <div id="progressText" class="progress-text">0%</div>
         </div>
-        <div id="statusText" class="status-text">就绪</div>
+        <div id="statusText" class="status-text">Ready</div>
       </section>
       
       <section class="results-section">
-        <h2>处理结果</h2>
+        <h2>Processing Results</h2>
         <div class="stats-container">
           <div class="stat-item">
-            <span class="stat-label">总帧数:</span>
+            <span class="stat-label">Total Frames:</span>
             <span id="totalFrames" class="stat-value">0</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">提取幻灯片数:</span>
+            <span class="stat-label">Extracted Slides:</span>
             <span id="extractedSlides" class="stat-value">0</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">处理时间:</span>
-            <span id="processingTime" class="stat-value">0秒</span>
+            <span class="stat-label">Processing Time:</span>
+            <span id="processingTime" class="stat-value">0 seconds</span>
           </div>
         </div>
         
         <div class="slides-preview">
-          <h3>提取的幻灯片预览</h3>
+          <h3>Extracted Slides Preview</h3>
           <div id="slidesContainer" class="slides-container">
-            <!-- 幻灯片预览将在这里动态添加 -->
+            <!-- Slides preview will be dynamically added here -->
           </div>
         </div>
       </section>
     </main>
     
     <footer>
-      <p>基于Electron和FFmpeg技术</p>
+      <p>A dedicated tool for AutoSlides, developed using it's architecture.</p>
     </footer>
   </div>
   

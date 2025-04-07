@@ -41,7 +41,7 @@ function loadConfig() {
       return { ...defaultConfig, ...JSON.parse(configData) };
     }
   } catch (error) {
-    console.error('加载配置文件失败:', error);
+    console.error('Failed to load configuration file:', error);
   }
   return defaultConfig;
 }
@@ -53,7 +53,7 @@ function saveConfig(config) {
     fs.writeFileSync(configPath, configData, 'utf8');
     return true;
   } catch (error) {
-    console.error('保存配置文件失败:', error);
+    console.error('Failed to save configuration file:', error);
     return false;
   }
 }
@@ -131,7 +131,7 @@ ipcMain.handle('select-video-file', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile'],
     filters: [
-      { name: '视频文件', extensions: ['mp4', 'avi', 'mkv', 'mov', 'webm'] }
+      { name: 'Video Files', extensions: ['mp4', 'avi', 'mkv', 'mov', 'webm'] }
     ]
   });
   
@@ -153,7 +153,7 @@ ipcMain.handle('get-video-info', async (event, videoPath) => {
       // 提取视频信息
       const videoStream = metadata.streams.find(stream => stream.codec_type === 'video');
       if (!videoStream) {
-        reject('未找到视频流');
+        reject('No video stream found');
         return;
       }
       
@@ -220,14 +220,14 @@ ipcMain.handle('extract-frames', async (event, { videoPath, outputDir, interval,
             });
           })
           .on('error', (err) => {
-            reject(`抽帧错误: ${err.message}`);
+            reject(`Frame extraction error: ${err.message}`);
           });
         
         // 执行命令
         command.run();
       });
     } catch (error) {
-      reject(`处理视频错误: ${error.message}`);
+      reject(`Video processing error: ${error.message}`);
     }
   });
 });
@@ -248,13 +248,13 @@ ipcMain.handle('save-slide', async (event, { imageData, outputDir, filename }) =
       
       fs.writeFile(filePath, buffer, (err) => {
         if (err) {
-          reject(`保存图像失败: ${err.message}`);
+          reject(`Failed to save image: ${err.message}`);
         } else {
           resolve({ success: true, filePath });
         }
       });
     } catch (error) {
-      reject(`保存图像错误: ${error.message}`);
+      reject(`Image saving error: ${error.message}`);
     }
   });
 });
@@ -265,7 +265,7 @@ ipcMain.handle('list-frame-files', async (event, dirPath) => {
     try {
       // 确保目录存在
       if (!fs.existsSync(dirPath)) {
-        reject('目录不存在');
+        reject('Directory does not exist');
         return;
       }
       
@@ -285,7 +285,7 @@ ipcMain.handle('list-frame-files', async (event, dirPath) => {
       
       resolve({ files });
     } catch (error) {
-      reject(`列出帧文件错误: ${error.message}`);
+      reject(`Error listing frame files: ${error.message}`);
     }
   });
 });
@@ -296,7 +296,7 @@ ipcMain.handle('read-frame-image', async (event, filePath) => {
     try {
       // 确保文件存在
       if (!fs.existsSync(filePath)) {
-        reject('文件不存在');
+        reject('File does not exist');
         return;
       }
       
@@ -306,7 +306,7 @@ ipcMain.handle('read-frame-image', async (event, filePath) => {
       
       resolve(base64Data);
     } catch (error) {
-      reject(`读取帧图像错误: ${error.message}`);
+      reject(`Error reading frame image: ${error.message}`);
     }
   });
 });
@@ -323,7 +323,7 @@ ipcMain.handle('create-slides-dir', async (event, baseDir) => {
       
       resolve(slidesDir);
     } catch (error) {
-      reject(`创建幻灯片目录错误: ${error.message}`);
+      reject(`Error creating slides directory: ${error.message}`);
     }
   });
 });

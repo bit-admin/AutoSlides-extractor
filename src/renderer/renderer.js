@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     ssimThreshold.value = config.captureStrategy?.ssimThreshold || 0.999;
     enableDoubleVerification.checked = config.enableDoubleVerification !== false;
   } catch (error) {
-    console.error('加载配置失败:', error);
+    console.error('Failed to load configuration:', error);
   }
 });
 
@@ -56,11 +56,11 @@ btnSelectVideo.addEventListener('click', async () => {
     
     // 获取视频信息
     try {
-      statusText.textContent = '正在获取视频信息...';
+      statusText.textContent = 'Getting video information...';
       const videoInfo = await window.electronAPI.getVideoInfo(videoPath);
-      statusText.textContent = `视频信息: ${Math.round(videoInfo.duration)}秒, ${videoInfo.width}x${videoInfo.height}, ${videoInfo.fps.toFixed(2)}fps`;
+      statusText.textContent = `Video info: ${Math.round(videoInfo.duration)}s, ${videoInfo.width}x${videoInfo.height}, ${videoInfo.fps.toFixed(2)}fps`;
     } catch (error) {
-      statusText.textContent = `获取视频信息失败: ${error}`;
+      statusText.textContent = `Failed to get video information: ${error}`;
     }
   }
 });
@@ -74,12 +74,12 @@ btnSelectDir.addEventListener('click', async () => {
 
 btnStartProcess.addEventListener('click', async () => {
   if (!selectedVideoPath) {
-    statusText.textContent = '请先选择视频文件';
+    statusText.textContent = 'Please select a video file first';
     return;
   }
   
   if (!inputOutputDir.value) {
-    statusText.textContent = '请先选择输出目录';
+    statusText.textContent = 'Please select an output directory first';
     return;
   }
   
@@ -110,7 +110,7 @@ async function saveConfig() {
     
     await window.electronAPI.saveConfig(config);
   } catch (error) {
-    console.error('保存配置失败:', error);
+    console.error('Failed to save configuration:', error);
   }
 }
 
@@ -132,9 +132,9 @@ async function startProcessing() {
     progressText.textContent = '0%';
     totalFrames.textContent = '0';
     extractedSlides.textContent = '0';
-    processingTime.textContent = '0秒';
+    processingTime.textContent = '0s';
     slidesContainer.innerHTML = '';
-    statusText.textContent = '正在抽取视频帧...';
+    statusText.textContent = 'Extracting video frames...';
     
     // 抽取视频帧
     const interval = parseFloat(inputCheckInterval.value);
@@ -153,18 +153,18 @@ async function startProcessing() {
     totalFrames.textContent = result.totalFrames;
     
     // 处理抽取的帧
-    statusText.textContent = '正在分析帧...';
+    statusText.textContent = 'Analyzing frames...';
     await processFrames(framesDir);
     
     // 完成处理
     const endTime = Date.now();
     const duration = Math.round((endTime - processStartTime) / 1000);
-    processingTime.textContent = `${duration}秒`;
-    statusText.textContent = `处理完成，共提取${extractedCount}张幻灯片`;
+    processingTime.textContent = `${duration}s`;
+    statusText.textContent = `Processing complete, extracted ${extractedCount} slides`;
     
   } catch (error) {
     console.error('处理视频失败:', error);
-    statusText.textContent = `处理失败: ${error}`;
+    statusText.textContent = `Processing failed: ${error}`;
   } finally {
     isProcessing = false;
     btnStartProcess.disabled = false;
@@ -176,7 +176,7 @@ async function startProcessing() {
 function stopProcessing() {
   if (isProcessing) {
     isProcessing = false;
-    statusText.textContent = '处理已停止';
+    statusText.textContent = 'Processing stopped';
     btnStartProcess.disabled = false;
     btnStopProcess.disabled = true;
   }
@@ -306,7 +306,7 @@ async function processFrames(framesDir) {
     
     return extractedCount;
   } catch (error) {
-    console.error('处理帧失败:', error);
+    console.error('Failed to process frames:', error);
     throw error;
   }
 }
@@ -326,7 +326,7 @@ async function saveSlide(imageData, outputDir, filename) {
     
     return true;
   } catch (error) {
-    console.error('保存幻灯片失败:', error);
+    console.error('Failed to save slide:', error);
     return false;
   }
 }
@@ -441,7 +441,7 @@ function performPerceptualComparison(data1, data2, resolve) {
     const hammingDistance = calculateHammingDistance(hash1, hash2);
     const hammingThreshold = parseInt(hammingThresholdUp.value) || 5;
     
-    console.log(`pHash比较: 汉明距离 = ${hammingDistance}`);
+    console.log(`pHash comparison: Hamming distance = ${hammingDistance}`);
     
     if (hammingDistance > hammingThreshold) {
       // 哈希显著不同
@@ -464,7 +464,7 @@ function performPerceptualComparison(data1, data2, resolve) {
       const ssim = calculateSSIM(data1, data2);
       const ssimThresholdValue = parseFloat(ssimThreshold.value) || 0.999;
       
-      console.log(`SSIM相似度: ${ssim.toFixed(6)}`);
+      console.log(`SSIM similarity: ${ssim.toFixed(6)}`);
       
       resolve({
         changed: ssim < ssimThresholdValue,
@@ -474,7 +474,7 @@ function performPerceptualComparison(data1, data2, resolve) {
       });
     }
   } catch (error) {
-    console.error('感知比较错误:', error);
+    console.error('Perceptual comparison error:', error);
     performBasicComparison(data1, data2, resolve); // 回退到基本方法
   }
 }
