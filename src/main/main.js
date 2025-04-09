@@ -18,7 +18,7 @@ const configPath = path.join(userDataPath, 'config.json');
 
 // 默认配置
 const defaultConfig = {
-  outputDir: app.getPath('pictures'),
+  outputDir: path.join(app.getPath('downloads'), 'extracted'),
   checkInterval: 2,
   captureStrategy: {
     gaussianBlurSigma: 0.5,
@@ -32,6 +32,13 @@ const defaultConfig = {
   enableDoubleVerification: true,
   verificationCount: 2
 };
+
+// 确保目录存在
+function ensureDirectoryExists(directory) {
+  if (!fs.existsSync(directory)) {
+    fs.mkdirSync(directory, { recursive: true });
+  }
+}
 
 // 加载配置
 function loadConfig() {
@@ -85,7 +92,10 @@ function createWindow() {
 
 // 当Electron完成初始化并准备创建浏览器窗口时调用此方法
 app.whenReady().then(() => {
+  const config = loadConfig();
+  
   createWindow();
+  ensureDirectoryExists(config.outputDir);
 
   app.on('activate', function () {
     // 在macOS上，当点击dock图标并且没有其他窗口打开时，通常会在应用程序中重新创建一个窗口
@@ -173,9 +183,7 @@ ipcMain.handle('extract-frames', async (event, { videoPath, outputDir, interval,
   return new Promise((resolve, reject) => {
     try {
       // 确保输出目录存在
-      if (!fs.existsSync(outputDir)) {
-        fs.mkdirSync(outputDir, { recursive: true });
-      }
+      ensureDirectoryExists(outputDir);
       
       // 获取视频信息
       ffmpeg.ffprobe(videoPath, (err, metadata) => {
@@ -237,9 +245,7 @@ ipcMain.handle('save-slide', async (event, { imageData, outputDir, filename }) =
   return new Promise((resolve, reject) => {
     try {
       // 确保输出目录存在
-      if (!fs.existsSync(outputDir)) {
-        fs.mkdirSync(outputDir, { recursive: true });
-      }
+      ensureDirectoryExists(outputDir);
       
       // 将Base64图像数据写入文件
       const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');

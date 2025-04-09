@@ -163,7 +163,7 @@ async function startProcessing() {
     statusText.textContent = `Processing complete, extracted ${extractedCount} slides`;
     
   } catch (error) {
-    console.error('处理视频失败:', error);
+    console.error('Failed to process video:', error);
     statusText.textContent = `Processing failed: ${error}`;
   } finally {
     isProcessing = false;
@@ -189,7 +189,7 @@ function updateProgress(progress) {
   const percent = progress.percent;
   progressFill.style.width = `${percent}%`;
   progressText.textContent = `${percent}%`;
-  statusText.textContent = `正在抽取视频帧... ${Math.round(progress.currentTime)}/${Math.round(progress.totalTime)}秒`;
+  statusText.textContent = `Extracting video frames... ${Math.round(progress.currentTime)}/${Math.round(progress.totalTime)}秒`;
 }
 
 // 处理抽取的帧
@@ -215,7 +215,7 @@ async function processFrames(framesDir) {
       const percent = Math.round((processedFrames / frameFiles.length) * 100);
       progressFill.style.width = `${percent}%`;
       progressText.textContent = `${percent}%`;
-      statusText.textContent = `正在分析帧 ${processedFrames}/${frameFiles.length}`;
+      statusText.textContent = `Analyzing frame ${processedFrames}/${frameFiles.length}`;
       
       // 读取帧图像 - 通过主进程API读取
       const base64Data = await window.electronAPI.readFrameImage(framePath);
@@ -234,7 +234,7 @@ async function processFrames(framesDir) {
       
       // 如果检测到变化
       if (comparisonResult.changed) {
-        console.log(`检测到变化: ${comparisonResult.method}, 变化率: ${comparisonResult.changeRatio.toFixed(4)}`);
+        console.log(`Change detected: ${comparisonResult.method}, Rate of change: ${comparisonResult.changeRatio.toFixed(4)}`);
         
         // 如果启用二次校验
         if (enableDoubleVerification.checked) {
@@ -385,7 +385,7 @@ function compareImages(img1Data, img2Data) {
           case 'basic':
             performBasicComparison(data1, data2, resolve);
             break;
-          case 'perceptual':
+          case 'default':
             performPerceptualComparison(data1, data2, resolve);
             break;
           default:
@@ -700,7 +700,7 @@ function applySimplifiedDCT(pixels, size) {
 // 计算汉明距离
 function calculateHammingDistance(hash1, hash2) {
   if (hash1.length !== hash2.length) {
-    throw new Error('哈希长度不匹配');
+    throw new Error('Hash length mismatch');
   }
   
   let distance = 0;
