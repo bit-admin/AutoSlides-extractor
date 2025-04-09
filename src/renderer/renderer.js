@@ -15,9 +15,23 @@ const extractedSlides = document.getElementById('extractedSlides');
 const processingTime = document.getElementById('processingTime');
 const slidesContainer = document.getElementById('slidesContainer');
 const comparisonMethod = document.getElementById('comparisonMethod');
-const hammingThresholdUp = document.getElementById('hammingThresholdUp');
-const ssimThreshold = document.getElementById('ssimThreshold');
 const enableDoubleVerification = document.getElementById('enableDoubleVerification');
+
+// 阈值参数设置
+// pHash 和 SSIM 相关阈值
+const HAMMING_THRESHOLD_UP = 5;       // 感知哈希汉明距离上限阈值
+const SSIM_THRESHOLD = 0.999;         // 结构相似性指数阈值
+
+// 基本像素比较相关阈值
+const PIXEL_CHANGE_RATIO_THRESHOLD = 0.005;  // 基本比较中的变化率阈值
+const PIXEL_DIFF_THRESHOLD = 30;      // 像素差异阈值
+
+// SSIM 计算相关常数
+const SSIM_C1_FACTOR = 0.01;          // SSIM 计算中的 C1 因子
+const SSIM_C2_FACTOR = 0.03;          // SSIM 计算中的 C2 因子
+
+// 验证相关阈值
+const VERIFICATION_COUNT = 2;         // 二次校验需要的连续相同帧数
 
 // 全局变量
 let selectedVideoPath = '';
@@ -27,7 +41,6 @@ let processStartTime = 0;
 let processedFrames = 0;
 let extractedCount = 0;
 let lastImageData = null;
-let verificationCount = 2; // 二次校验需要的连续相同帧数
 let currentVerification = 0;
 let potentialNewImageData = null;
 
@@ -39,8 +52,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     inputOutputDir.value = config.outputDir || '';
     inputCheckInterval.value = config.checkInterval || 2;
     comparisonMethod.value = config.comparisonMethod || 'default';
-    hammingThresholdUp.value = config.captureStrategy?.hammingThresholdUp || 5;
-    ssimThreshold.value = config.captureStrategy?.ssimThreshold || 0.999;
     enableDoubleVerification.checked = config.enableDoubleVerification !== false;
   } catch (error) {
     console.error('Failed to load configuration:', error);
@@ -102,8 +113,8 @@ async function saveConfig() {
       checkInterval: parseFloat(inputCheckInterval.value),
       comparisonMethod: comparisonMethod.value,
       captureStrategy: {
-        hammingThresholdUp: parseInt(hammingThresholdUp.value),
-        ssimThreshold: parseFloat(ssimThreshold.value)
+        hammingThresholdUp: HAMMING_THRESHOLD_UP,
+        ssimThreshold: SSIM_THRESHOLD
       },
       enableDoubleVerification: enableDoubleVerification.checked
     };
@@ -253,7 +264,7 @@ async function processFrames(framesDir) {
             // 第一次检测到变化
             potentialNewImageData = base64Data;
             currentVerification = 1;
-          } else if (currentVerification < verificationCount) {
+          } else if (currentVerification < VERIFICATION_COUNT) {
             // 比较当前帧与潜在新帧
             const verificationResult = await compareImages(potentialNewImageData, base64Data);
             
@@ -262,7 +273,7 @@ async function processFrames(framesDir) {
               currentVerification++;
               
               // 达到验证次数，保存幻灯片
-              if (currentVerification >= verificationCount) {
+              if (currentVerification >= VERIFICATION_COUNT) {
                 lastImageData = potentialNewImageData;
                 extractedCount++;
                 const slideNumber = String(extractedCount).padStart(3, '0');
@@ -296,7 +307,7 @@ async function processFrames(framesDir) {
           currentVerification++;
           
           // 达到验证次数，保存幻灯片
-          if (currentVerification >= verificationCount) {
+          if (currentVerification >= VERIFICATION_COUNT) {
             lastImageData = potentialNewImageData;
             extractedCount++;
             const slideNumber = String(extractedCount).padStart(3, '0');
@@ -432,10 +443,9 @@ function performBasicComparison(data1, data2, resolve) {
   
   // 比较像素
   const comparisonResult = comparePixels(data1, data2);
-  const changeRatioThreshold = 0.005; // 变化率阈值
   
   resolve({
-    changed: comparisonResult.changeRatio > changeRatioThreshold,
+    changed: comparisonResult.changeRatio > PIXEL_CHANGE_RATIO_THRESHOLD,
     changeRatio: comparisonResult.changeRatio,
     method: 'basic'
   });
@@ -450,11 +460,10 @@ function performPerceptualComparison(data1, data2, resolve) {
     
     // 计算汉明距离
     const hammingDistance = calculateHammingDistance(hash1, hash2);
-    const hammingThreshold = parseInt(hammingThresholdUp.value) || 5;
     
     console.log(`pHash comparison: Hamming distance = ${hammingDistance}`);
     
-    if (hammingDistance > hammingThreshold) {
+    if (hammingDistance > HAMMING_THRESHOLD_UP) {
       // 哈希显著不同
       resolve({
         changed: true,
@@ -473,12 +482,11 @@ function performPerceptualComparison(data1, data2, resolve) {
     } else {
       // 边界情况，使用SSIM
       const ssim = calculateSSIM(data1, data2);
-      const ssimThresholdValue = parseFloat(ssimThreshold.value) || 0.999;
       
       console.log(`SSIM similarity: ${ssim.toFixed(6)}`);
       
       resolve({
-        changed: ssim < ssimThresholdValue,
+        changed: ssim < SSIM_THRESHOLD,
         changeRatio: 1.0 - ssim,
         method: 'SSIM',
         similarity: ssim
@@ -592,7 +600,7 @@ function comparePixels(data1, data2) {
       const i = (y * width + x) * 4;
       const diff = Math.abs(data1.data[i] - data2.data[i]);
       
-      if (diff > 30) { // 像素差异阈值
+      if (diff > PIXEL_DIFF_THRESHOLD) {
         diffCount++;
       }
     }
@@ -755,8 +763,8 @@ function calculateSSIM(img1Data, img2Data) {
   covar /= pixelCount;
   
   // 稳定常数
-  const C1 = 0.01 * 255 * 0.01 * 255;
-  const C2 = 0.03 * 255 * 0.03 * 255;
+  const C1 = SSIM_C1_FACTOR * 255 * SSIM_C1_FACTOR * 255;
+  const C2 = SSIM_C2_FACTOR * 255 * SSIM_C2_FACTOR * 255;
   
   // 计算SSIM
   const numerator = (2 * mean1 * mean2 + C1) * (2 * covar + C2);

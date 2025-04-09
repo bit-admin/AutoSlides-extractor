@@ -42,26 +42,14 @@
             <option value="basic">Basic (Pixel)</option>
           </select>
         </div>
-      </section>
-      
-      <section class="settings-section">
-        <h2>Detection Settings</h2>
-        
-        <div class="form-group">
-          <label for="hammingThresholdUp">Hamming Distance Threshold (Upper):</label>
-          <input type="number" id="hammingThresholdUp" min="1" max="20" step="1" value="5">
-        </div>
-        
-        <div class="form-group">
-          <label for="ssimThreshold">SSIM Threshold:</label>
-          <input type="number" id="ssimThreshold" min="0.9" max="0.9999" step="0.0001" value="0.999">
-        </div>
-        
+
         <div class="form-group checkbox-group">
           <input type="checkbox" id="enableDoubleVerification" checked>
-          <label for="enableDoubleVerification">Enable Double Verification (Ensure 2 consecutive frames are identical)</label>
+          <label for="enableDoubleVerification">Enable Double Verification</label>
         </div>
       </section>
+      
+
       
       <section class="action-section">
         <button id="btnStartProcess" class="primary-button">Start Processing</button>
