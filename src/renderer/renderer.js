@@ -191,6 +191,15 @@ async function startProcessing() {
     isProcessing = false;
     btnStartProcess.disabled = false;
     btnStopProcess.disabled = true;
+
+    // 清理临时目录
+    if (tempDir) {
+      try {
+        await window.electronAPI.cleanupTempDir(tempDir);
+      } catch (cleanupError) {
+        console.error('Failed to cleanup temporary directory:', cleanupError);
+      }
+    }
   }
 }
 
