@@ -146,6 +146,8 @@ ipcMain.handle('select-video-file', async () => {
   });
   
   if (!result.canceled && result.filePaths.length > 0) {
+    // 存储选择的视频路径到全局变量，供createSlidesDir使用
+    global.selectedVideoPath = result.filePaths[0];
     return result.filePaths[0];
   }
   return null;
@@ -179,7 +181,9 @@ ipcMain.handle('get-video-info', async (event, videoPath) => {
 });
 
 // 处理视频抽帧
-ipcMain.handle('extract-frames', async (event, { videoPath, outputDir, interval, onProgress }) => {
+ipcMain.handle('extract-frames', async (event, { videoPath, outputDir, interval, saveFrames = false, onProgress }) => {
+  // 更新全局变量，确保createSlidesDir可以访问到当前处理的视频路径
+  global.selectedVideoPath = videoPath;
   return new Promise((resolve, reject) => {
     try {
       // 确保输出目录存在
@@ -199,8 +203,16 @@ ipcMain.handle('extract-frames', async (event, { videoPath, outputDir, interval,
         // 创建时间戳目录
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const framesDir = path.join(outputDir, `frames_${timestamp}`);
-        if (!fs.existsSync(framesDir)) {
+        
+        // 只有在需要保存帧时才创建目录
+        if (saveFrames && !fs.existsSync(framesDir)) {
           fs.mkdirSync(framesDir, { recursive: true });
+        }
+        
+        // 创建临时目录用于处理
+        const tempDir = path.join(app.getPath('temp'), `frames_temp_${timestamp}`);
+        if (!fs.existsSync(tempDir)) {
+          fs.mkdirSync(tempDir, { recursive: true });
         }
         
         // 设置抽帧命令
@@ -209,7 +221,7 @@ ipcMain.handle('extract-frames', async (event, { videoPath, outputDir, interval,
             `-vf fps=1/${interval}`,  // 每隔interval秒抽取一帧
             '-q:v 1'                  // 最高质量
           ])
-          .output(path.join(framesDir, 'frame-%04d.jpg'))
+          .output(path.join(saveFrames ? framesDir : tempDir, 'frame-%04d.jpg'))
           .on('progress', (progress) => {
             // 计算进度
             const currentTime = progress.timemark.split(':');
@@ -223,8 +235,9 @@ ipcMain.handle('extract-frames', async (event, { videoPath, outputDir, interval,
           })
           .on('end', () => {
             resolve({
-              framesDir,
-              totalFrames: Math.floor(duration / interval)
+              framesDir: saveFrames ? framesDir : tempDir,
+              totalFrames: Math.floor(duration / interval),
+              tempDir: !saveFrames ? tempDir : null // 返回临时目录路径，以便后续清理
             });
           })
           .on('error', (err) => {
@@ -321,8 +334,23 @@ ipcMain.handle('read-frame-image', async (event, filePath) => {
 ipcMain.handle('create-slides-dir', async (event, baseDir) => {
   return new Promise((resolve, reject) => {
     try {
+      // 获取当前选择的视频路径
+      const videoPath = global.selectedVideoPath;
+      let folderName = 'slides_';
+      
+      // 如果有视频路径，使用视频文件名（空格替换为下划线）
+      if (videoPath) {
+        // 提取文件名（不含扩展名）
+        const videoFileName = path.basename(videoPath, path.extname(videoPath));
+        // 替换空格为下划线
+        folderName = videoFileName.replace(/\s+/g, '_');
+      } else {
+        // 如果没有视频路径，使用时间戳作为备选
+        folderName = 'slides_' + new Date().toISOString().replace(/[:.]/g, '-');
+      }
+      
       // 创建幻灯片输出目录
-      const slidesDir = path.join(baseDir, 'slides_' + new Date().toISOString().replace(/[:.]/g, '-'));
+      const slidesDir = path.join(baseDir, folderName);
       if (!fs.existsSync(slidesDir)) {
         fs.mkdirSync(slidesDir, { recursive: true });
       }
@@ -330,6 +358,31 @@ ipcMain.handle('create-slides-dir', async (event, baseDir) => {
       resolve(slidesDir);
     } catch (error) {
       reject(`Error creating slides directory: ${error.message}`);
+    }
+  });
+});
+
+// 清理临时目录
+ipcMain.handle('cleanup-temp-dir', async (event, tempDir) => {
+  return new Promise((resolve, reject) => {
+    try {
+      if (tempDir && fs.existsSync(tempDir)) {
+        // 删除临时目录中的所有文件
+        const files = fs.readdirSync(tempDir);
+        for (const file of files) {
+          fs.unlinkSync(path.join(tempDir, file));
+        }
+        
+        // 删除临时目录
+        fs.rmdirSync(tempDir);
+        resolve({ success: true });
+      } else {
+        resolve({ success: false, message: 'Temporary directory does not exist' });
+      }
+    } catch (error) {
+      console.error('Failed to cleanup temporary directory:', error);
+      // 即使清理失败也不抛出异常，避免影响用户体验
+      resolve({ success: false, message: error.message });
     }
   });
 });

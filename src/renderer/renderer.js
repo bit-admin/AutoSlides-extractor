@@ -146,10 +146,12 @@ async function startProcessing() {
       videoPath: selectedVideoPath,
       outputDir: inputOutputDir.value,
       interval: interval,
+      saveFrames: false, // 不保存中间帧文件
       onProgress: updateProgress // 添加进度更新回调
     });
     
     framesDir = result.framesDir;
+    const tempDir = result.tempDir; // 保存临时目录路径，用于后续清理
     totalFrames.textContent = result.totalFrames;
     
     // 处理抽取的帧
@@ -161,6 +163,15 @@ async function startProcessing() {
     const duration = Math.round((endTime - processStartTime) / 1000);
     processingTime.textContent = `${duration}s`;
     statusText.textContent = `Processing complete, extracted ${extractedCount} slides`;
+    
+    // 清理临时目录
+    if (tempDir) {
+      try {
+        await window.electronAPI.cleanupTempDir(tempDir);
+      } catch (error) {
+        console.error('Failed to cleanup temporary directory:', error);
+      }
+    }
     
   } catch (error) {
     console.error('Failed to process video:', error);
@@ -189,7 +200,7 @@ function updateProgress(progress) {
   const percent = progress.percent;
   progressFill.style.width = `${percent}%`;
   progressText.textContent = `${percent}%`;
-  statusText.textContent = `Extracting video frames... ${Math.round(progress.currentTime)}/${Math.round(progress.totalTime)}秒`;
+  statusText.textContent = `Extracting video frames... ${Math.round(progress.currentTime)}/${Math.round(progress.totalTime)}Seconds`;
 }
 
 // 处理抽取的帧

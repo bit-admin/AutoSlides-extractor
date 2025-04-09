@@ -34,6 +34,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   listFrameFiles: (dirPath) => ipcRenderer.invoke('list-frame-files', dirPath),
   readFrameImage: (filePath) => ipcRenderer.invoke('read-frame-image', filePath),
   createSlidesDir: (baseDir) => ipcRenderer.invoke('create-slides-dir', baseDir),
+  cleanupTempDir: (tempDir) => ipcRenderer.invoke('cleanup-temp-dir', tempDir),
   
   // 移除所有监听器
   removeAllListeners: () => {
