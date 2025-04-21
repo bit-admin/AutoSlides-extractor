@@ -43,6 +43,7 @@ let extractedCount = 0;
 let lastImageData = null;
 let currentVerification = 0;
 let potentialNewImageData = null;
+let timerInterval = null;
 
 // 初始化
 document.addEventListener('DOMContentLoaded', async () => {
@@ -147,6 +148,9 @@ async function startProcessing() {
     slidesContainer.innerHTML = '';
     statusText.textContent = 'Extracting video frames...';
     
+    // 启动实时计时器
+    startTimer();
+    
     // 抽取视频帧
     const interval = parseFloat(inputCheckInterval.value);
     
@@ -170,9 +174,7 @@ async function startProcessing() {
     await processFrames(framesDir);
     
     // 完成处理
-    const endTime = Date.now();
-    const duration = Math.round((endTime - processStartTime) / 1000);
-    processingTime.textContent = `${duration}s`;
+    stopTimer(); // 停止计时器
     statusText.textContent = `Processing complete, extracted ${extractedCount} slides`;
     
     // 清理临时目录
@@ -210,6 +212,32 @@ function stopProcessing() {
     statusText.textContent = 'Processing stopped';
     btnStartProcess.disabled = false;
     btnStopProcess.disabled = true;
+    stopTimer();
+  }
+}
+
+// 启动计时器
+function startTimer() {
+  // 清除可能存在的旧计时器
+  if (timerInterval) {
+    clearInterval(timerInterval);
+  }
+  
+  // 设置新计时器，每秒更新一次
+  timerInterval = setInterval(() => {
+    if (isProcessing) {
+      const currentTime = Date.now();
+      const elapsedSeconds = Math.round((currentTime - processStartTime) / 1000);
+      processingTime.textContent = `${elapsedSeconds}s`;
+    }
+  }, 1000);
+}
+
+// 停止计时器
+function stopTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
   }
 }
 
