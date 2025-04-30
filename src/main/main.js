@@ -85,9 +85,6 @@ function createWindow() {
   // Load the application's index.html
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
 
-  // Open Developer Tools
-  mainWindow.webContents.openDevTools();
-
   // Triggered when the window is closed
   mainWindow.on('closed', function () {
     mainWindow = null;
