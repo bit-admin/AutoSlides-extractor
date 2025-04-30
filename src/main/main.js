@@ -2,14 +2,30 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
-const ffmpegPath = require('ffmpeg-static');
-const ffprobePath = require('ffprobe-static').path;
+const ffmpegStatic = require('ffmpeg-static');
+const ffprobeStatic = require('ffprobe-static');
 
 app.setName('AutoSlides Extractor'); 
 
-// Set ffmpeg and ffprobe paths
-ffmpeg.setFfmpegPath(ffmpegPath);
-ffmpeg.setFfprobePath(ffprobePath);
+// Helper function to get correct binary path whether in development or production
+function getBinaryPath(binaryPath) {
+  if (process.env.NODE_ENV === 'development') {
+    // Use path directly in development
+    return binaryPath;
+  }
+  
+  // In production, handle ASAR case
+  // If path includes 'app.asar', get the real path outside the ASAR archive
+  if (binaryPath.includes('app.asar')) {
+    return binaryPath.replace('app.asar', 'app.asar.unpacked');
+  }
+  
+  return binaryPath;
+}
+
+// Set ffmpeg and ffprobe paths with proper resolution
+ffmpeg.setFfmpegPath(getBinaryPath(ffmpegStatic));
+ffmpeg.setFfprobePath(getBinaryPath(ffprobeStatic.path));
 
 let mainWindow;
 
