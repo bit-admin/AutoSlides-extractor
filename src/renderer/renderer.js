@@ -719,34 +719,34 @@ function resizeImageData(imageData, newWidth, newHeight) {
   return ctx.getImageData(0, 0, newWidth, newHeight);
 }
 
-// 计算感知哈希
+// Calculate Perceptual Hash
 function calculatePerceptualHash(imageData) {
-  // 转换为灰度
+  // Convert to grayscale
   const grayscaleData = convertToGrayscale(imageData);
   
-  // 调整为32x32用于DCT处理
+  // Adjust to 32x32 for DCT processing
   const resizedData = resizeImageData(grayscaleData, 32, 32);
   
-  // 将图像数据转换为2D数组用于DCT
+  // Convert image data to a 2D array for DCT
   const pixels = new Array(32);
   for (let y = 0; y < 32; y++) {
     pixels[y] = new Array(32);
     for (let x = 0; x < 32; x++) {
       const idx = (y * 32 + x) * 4;
-      pixels[y][x] = resizedData.data[idx]; // 使用红色通道（灰度）
+      pixels[y][x] = resizedData.data[idx]; // Use the red channel (grayscale)
     }
   }
   
-  // 应用DCT - 简化版本
+  // Application DCT - Simplified Version
   const dct = applySimplifiedDCT(pixels, 32);
   
-  // 计算低频分量的中值（不包括DC分量）
-  // 我们将使用DCT系数的较小部分（8x8低频分量）
+  // Calculate the median of the low-frequency components (excluding the DC component)
+  // We will use a smaller portion of the DCT coefficients (8x8 low-frequency components).
   const hashSize = 8;
   const dctLowFreq = [];
   for (let y = 0; y < hashSize; y++) {
     for (let x = 0; x < hashSize; x++) {
-      if (!(x === 0 && y === 0)) { // 跳过DC分量（左上角）
+      if (!(x === 0 && y === 0)) { // Skip DC component (top left corner)
         dctLowFreq.push(dct[y][x]);
       }
     }
@@ -754,11 +754,11 @@ function calculatePerceptualHash(imageData) {
   dctLowFreq.sort((a, b) => a - b);
   const medianValue = dctLowFreq[Math.floor(dctLowFreq.length / 2)];
   
-  // 使用低频分量生成哈希
+  // Generate hash using low-frequency components
   let hash = '';
   for (let y = 0; y < hashSize; y++) {
     for (let x = 0; x < hashSize; x++) {
-      if (!(x === 0 && y === 0)) { // 跳过DC分量
+      if (!(x === 0 && y === 0)) { // Skip DC component
         hash += (dct[y][x] >= medianValue) ? '1' : '0';
       }
     }
@@ -767,7 +767,7 @@ function calculatePerceptualHash(imageData) {
   return hash;
 }
 
-// 应用简化的DCT
+// Application of Simplified DCT
 function applySimplifiedDCT(pixels, size) {
   const result = Array(size).fill().map(() => Array(size).fill(0));
   
@@ -782,7 +782,7 @@ function applySimplifiedDCT(pixels, size) {
         }
       }
       
-      // 应用权重因子
+      // Application Weight Factor
       const cu = (u === 0) ? 1 / Math.sqrt(2) : 1;
       const cv = (v === 0) ? 1 / Math.sqrt(2) : 1;
       result[u][v] = sum * cu * cv * (2 / size);
@@ -792,7 +792,7 @@ function applySimplifiedDCT(pixels, size) {
   return result;
 }
 
-// 计算汉明距离
+// Calculate Hamming Distance
 function calculateHammingDistance(hash1, hash2) {
   if (hash1.length !== hash2.length) {
     throw new Error('Hash length mismatch');
@@ -808,13 +808,13 @@ function calculateHammingDistance(hash1, hash2) {
   return distance;
 }
 
-// 计算SSIM (结构相似性指数)
+// Calculate SSIM (Structural Similarity Index)
 function calculateSSIM(img1Data, img2Data) {
-  // 转换为灰度
+  // Convert to grayscale
   const gray1 = convertToGrayscale(img1Data);
   const gray2 = convertToGrayscale(img2Data);
   
-  // 计算均值
+  // Calculate the mean
   let mean1 = 0, mean2 = 0;
   const pixelCount = gray1.width * gray1.height;
   
@@ -825,7 +825,7 @@ function calculateSSIM(img1Data, img2Data) {
   mean1 /= pixelCount;
   mean2 /= pixelCount;
   
-  // 计算方差和协方差
+  // Calculate variance and covariance
   let var1 = 0, var2 = 0, covar = 0;
   for (let i = 0; i < gray1.data.length; i += 4) {
     const diff1 = gray1.data[i] - mean1;
@@ -838,11 +838,11 @@ function calculateSSIM(img1Data, img2Data) {
   var2 /= pixelCount;
   covar /= pixelCount;
   
-  // 稳定常数
+  // Stability constant
   const C1 = SSIM_C1_FACTOR * 255 * SSIM_C1_FACTOR * 255;
   const C2 = SSIM_C2_FACTOR * 255 * SSIM_C2_FACTOR * 255;
   
-  // 计算SSIM
+  // Calculate SSIM
   const numerator = (2 * mean1 * mean2 + C1) * (2 * covar + C2);
   const denominator = (mean1 * mean1 + mean2 * mean2 + C1) * (var1 + var2 + C2);
   
