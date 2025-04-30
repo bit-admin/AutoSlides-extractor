@@ -407,6 +407,38 @@ footer {
     color: #e2e8f0;
   }
   
+  /* 暗色模式下占位符文本颜色 - 支持所有主流浏览器 */
+  input[type="text"]::placeholder,
+  input[type="number"]::placeholder,
+  select::placeholder {
+    color: #e2e8f0;
+    opacity: 0.7;
+  }
+  
+  /* Firefox */
+  input[type="text"]:-moz-placeholder,
+  input[type="number"]:-moz-placeholder,
+  select:-moz-placeholder {
+    color: #e2e8f0;
+    opacity: 0.7;
+  }
+  
+  /* Internet Explorer 10-11 */
+  input[type="text"]:-ms-input-placeholder,
+  input[type="number"]:-ms-input-placeholder,
+  select:-ms-input-placeholder {
+    color: #e2e8f0;
+    opacity: 0.7;
+  }
+  
+  /* Microsoft Edge */
+  input[type="text"]::-ms-input-placeholder,
+  input[type="number"]::-ms-input-placeholder,
+  select::-ms-input-placeholder {
+    color: #e2e8f0;
+    opacity: 0.7;
+  }
+  
   input[type="text"]:focus,
   input[type="number"]:focus,
   select:focus {
@@ -414,9 +446,90 @@ footer {
     box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.2);
   }
   
+  /* 按钮样式 - 暗色模式 */
+  button {
+    background-color: #4a5568;
+    color: #e2e8f0;
+  }
+  
+  button:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
+  
+  .primary-button {
+    background-color: #3182ce;
+  }
+  
+  .secondary-button {
+    background-color: #c53030;
+  }
+  
+  .reset-button {
+    background-color: #4a5568;
+  }
+  
+  /* 操作区域样式 - 暗色模式 */
+  .action-section {
+    background: linear-gradient(to right, #2d3748, #1a202c);
+  }
+  
+  /* 进度条样式 - 暗色模式 */
+  .progress-section {
+    background-color: #2d3748;
+    border-left-color: #3182ce;
+  }
+  
+  .progress-label {
+    color: #e2e8f0;
+  }
+  
+  .progress-text {
+    color: #e2e8f0;
+  }
+  
+  .progress-fill {
+    background: linear-gradient(90deg, #319795, #3182ce);
+  }
+  
+  @keyframes pulse-dark {
+    0% {
+      box-shadow: 0 0 0 0 rgba(49, 130, 206, 0.4);
+    }
+    70% {
+      box-shadow: 0 0 0 4px rgba(49, 130, 206, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(49, 130, 206, 0);
+    }
+  }
+  
+  .progress-fill {
+    animation: pulse-dark 2s infinite;
+  }
+  
+  /* 表单标签样式 - 暗色模式 */
+  label {
+    color: #e2e8f0;
+  }
+  
+  /* 复选框样式 - 暗色模式 */
+  .checkbox-group input[type="checkbox"] {
+    accent-color: #3182ce;
+  }
+  
+  /* 结果统计样式 - 暗色模式 */
   .stat-item {
     background-color: #3a4a5e;
     border-color: #4a5568;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+  
+  .stat-item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  
+  .stat-item::before {
+    background: linear-gradient(to bottom, #3182ce, #319795);
   }
   
   .stat-label {
@@ -427,16 +540,26 @@ footer {
     color: #4299e1;
   }
   
+  /* 幻灯片预览样式 - 暗色模式 */
+  .slide-item {
+    border-color: #4a5568;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+  
+  .slide-item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  
+  .slide-info {
+    background-color: rgba(0, 0, 0, 0.8);
+  }
+  
   .status-text {
     color: #cbd5e0;
   }
   
   .progress-bar {
     background-color: #4a5568;
-  }
-  
-  .slide-item {
-    border-color: #4a5568;
   }
   
   footer {

@@ -287,7 +287,7 @@ function updateProgress(progress) {
   const percent = progress.percent;
   progressFill.style.width = `${percent}%`;
   progressText.textContent = `${percent}%`;
-  statusText.textContent = `Extracting video frames... ${Math.round(progress.currentTime)}/${Math.round(progress.totalTime)}Seconds`;
+  statusText.textContent = `Extracting video frames... ${Math.round(progress.currentTime)}/${Math.round(progress.totalTime)}s`;
 }
 
 // Process the extracted frames
