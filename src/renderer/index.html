@@ -5,17 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AutoSlides Extractor</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 </head>
 <body>
   <div class="container">
-    <header>
-      <h1>AutoSlides Extractor</h1>
-    </header>
-    
     <main>
       <section class="input-section">
+        <h2>Extractor Configuration</h2>
         <div class="form-group">
-          <label for="inputVideo">Video File:</label>
+          <label for="inputVideo">Video File</label>
           <div class="input-with-button">
             <input type="text" id="inputVideo" readonly placeholder="Select video file...">
             <button id="btnSelectVideo">Browse</button>
@@ -23,24 +21,26 @@
         </div>
         
         <div class="form-group">
-          <label for="inputOutputDir">Output Directory:</label>
+          <label for="inputOutputDir">Output Directory</label>
           <div class="input-with-button">
             <input type="text" id="inputOutputDir" readonly placeholder="Select output directory...">
             <button id="btnSelectDir">Browse</button>
           </div>
         </div>
         
-        <div class="form-group">
-          <label for="inputCheckInterval">Frame Interval (seconds):</label>
-          <input type="number" id="inputCheckInterval" min="0.5" max="10" step="0.5" value="2">
-        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="inputCheckInterval">Frame Interval (seconds)</label>
+            <input type="number" id="inputCheckInterval" min="0.5" max="10" step="0.5" value="2">
+          </div>
 
-        <div class="form-group">
-          <label for="comparisonMethod">Comparison Method:</label>
-          <select id="comparisonMethod">
-            <option value="default">Default (pHash + SSIM)</option>
-            <option value="basic">Basic (Pixel)</option>
-          </select>
+          <div class="form-group">
+            <label for="comparisonMethod">Comparison Method</label>
+            <select id="comparisonMethod">
+              <option value="default">Default (pHash + SSIM)</option>
+              <option value="basic">Basic (Pixel)</option>
+            </select>
+          </div>
         </div>
 
         <div class="form-group checkbox-group">
@@ -49,19 +49,27 @@
         </div>
       </section>
       
-
-      
       <section class="action-section">
         <button id="btnStartProcess" class="primary-button">Start Processing</button>
         <button id="btnStopProcess" class="secondary-button" disabled>Stop Processing</button>
+        <button id="btnReset" class="reset-button">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 2v6h6"></path>
+            <path d="M3 8C5.33333 5.33333 8.33333 4 12 4c7.3333 0 10 4.66667 10 10 0 5.3333-2.6667 10-10 10-4 0-7.33333-2-9-6"></path>
+          </svg>
+          Reset
+        </button>
       </section>
       
       <section class="progress-section">
-        <div class="progress-container">
-          <div id="progressBar" class="progress-bar">
-            <div class="progress-fill"></div>
+        <div class="progress-info">
+          <span class="progress-label">Progress:</span>
+          <div class="progress-container">
+            <div id="progressBar" class="progress-bar">
+              <div class="progress-fill"></div>
+            </div>
+            <div id="progressText" class="progress-text">0%</div>
           </div>
-          <div id="progressText" class="progress-text">0%</div>
         </div>
         <div id="statusText" class="status-text">Ready</div>
       </section>
@@ -70,15 +78,15 @@
         <h2>Processing Results</h2>
         <div class="stats-container">
           <div class="stat-item">
-            <span class="stat-label">Total Frames:</span>
+            <span class="stat-label">Total Frames</span>
             <span id="totalFrames" class="stat-value">0</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">Extracted Slides:</span>
+            <span class="stat-label">Extracted Slides</span>
             <span id="extractedSlides" class="stat-value">0</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">Processing Time:</span>
+            <span class="stat-label">Processing Time</span>
             <span id="processingTime" class="stat-value">0 seconds</span>
           </div>
         </div>
@@ -93,7 +101,7 @@
     </main>
     
     <footer>
-      <p>A dedicated tool for AutoSlides, developed using it's architecture.</p>
+      <p>Copyright © 2025 AutoSlides. All Rights Reserved</p>
     </footer>
   </div>
   

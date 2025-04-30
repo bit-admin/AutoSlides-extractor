@@ -5,18 +5,20 @@ const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
 const ffprobePath = require('ffprobe-static').path;
 
-// 设置ffmpeg和ffprobe路径
+// Set ffmpeg and ffprobe paths
 ffmpeg.setFfmpegPath(ffmpegPath);
 ffmpeg.setFfprobePath(ffprobePath);
 
-// 保持对窗口对象的全局引用，避免JavaScript对象被垃圾回收时窗口关闭
 let mainWindow;
 
-// 创建配置文件路径
+// Add this global variable to track the current ffmpeg command
+let activeFFmpegCommand = null;
+
+// Create configuration file path
 const userDataPath = app.getPath('userData');
 const configPath = path.join(userDataPath, 'config.json');
 
-// 默认配置
+// Default Configuration
 const defaultConfig = {
   outputDir: path.join(app.getPath('downloads'), 'extracted'),
   checkInterval: 2,
@@ -33,14 +35,14 @@ const defaultConfig = {
   verificationCount: 2
 };
 
-// 确保目录存在
+// Ensure the directory exists
 function ensureDirectoryExists(directory) {
   if (!fs.existsSync(directory)) {
     fs.mkdirSync(directory, { recursive: true });
   }
 }
 
-// 加载配置
+// Load configuration
 function loadConfig() {
   try {
     if (fs.existsSync(configPath)) {
@@ -53,7 +55,7 @@ function loadConfig() {
   return defaultConfig;
 }
 
-// 保存配置
+// Save Configuration
 function saveConfig(config) {
   try {
     const configData = JSON.stringify({ ...loadConfig(), ...config }, null, 2);
@@ -66,9 +68,9 @@ function saveConfig(config) {
 }
 
 function createWindow() {
-  // 创建浏览器窗口
+  // Create browser window
   mainWindow = new BrowserWindow({
-    width: 780,
+    width: 530,
     height: 820,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -78,19 +80,19 @@ function createWindow() {
     }
   });
 
-  // 加载应用的index.html
+  // Load the application's index.html
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
 
-  // 打开开发者工具
+  // Open Developer Tools
   mainWindow.webContents.openDevTools();
 
-  // 当窗口关闭时触发
+  // Triggered when the window is closed
   mainWindow.on('closed', function () {
     mainWindow = null;
   });
 }
 
-// 当Electron完成初始化并准备创建浏览器窗口时调用此方法
+// This method is called when Electron has finished initializing and is ready to create browser windows.
 app.whenReady().then(() => {
   const config = loadConfig();
   
@@ -98,30 +100,30 @@ app.whenReady().then(() => {
   ensureDirectoryExists(config.outputDir);
 
   app.on('activate', function () {
-    // 在macOS上，当点击dock图标并且没有其他窗口打开时，通常会在应用程序中重新创建一个窗口
+    // On macOS, when clicking the dock icon and no other windows are open, it usually recreates a window in the application.
     if (mainWindow === null) createWindow();
   });
 });
 
-// 当所有窗口关闭时退出应用
+// Exit the application when all windows are closed
 app.on('window-all-closed', function () {
-  // 在macOS上，除非用户使用Cmd + Q确定地退出，否则应用和菜单栏会保持活动状态
+  // On macOS, unless the user explicitly quits using Cmd + Q, the application and menu bar will remain active.
   if (process.platform !== 'darwin') app.quit();
 });
 
-// 处理IPC消息
+// Handle IPC messages
 
-// 获取配置
+// Get Configuration
 ipcMain.handle('get-config', () => {
   return loadConfig();
 });
 
-// 保存配置
+// Save Configuration
 ipcMain.handle('save-config', (event, config) => {
   return saveConfig(config);
 });
 
-// 选择输出目录
+// Select Output Directory
 ipcMain.handle('select-output-dir', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory']
@@ -136,7 +138,7 @@ ipcMain.handle('select-output-dir', async () => {
   return null;
 });
 
-// 选择视频文件
+// Select video file
 ipcMain.handle('select-video-file', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile'],
@@ -146,14 +148,14 @@ ipcMain.handle('select-video-file', async () => {
   });
   
   if (!result.canceled && result.filePaths.length > 0) {
-    // 存储选择的视频路径到全局变量，供createSlidesDir使用
+    // Store the selected video path in a global variable for use by createSlidesDir
     global.selectedVideoPath = result.filePaths[0];
     return result.filePaths[0];
   }
   return null;
 });
 
-// 获取视频信息
+// Get video information
 ipcMain.handle('get-video-info', async (event, videoPath) => {
   return new Promise((resolve, reject) => {
     ffmpeg.ffprobe(videoPath, (err, metadata) => {
@@ -162,7 +164,7 @@ ipcMain.handle('get-video-info', async (event, videoPath) => {
         return;
       }
       
-      // 提取视频信息
+      // Extract video information
       const videoStream = metadata.streams.find(stream => stream.codec_type === 'video');
       if (!videoStream) {
         reject('No video stream found');
@@ -180,16 +182,16 @@ ipcMain.handle('get-video-info', async (event, videoPath) => {
   });
 });
 
-// 处理视频抽帧
+// Process video frame extraction
 ipcMain.handle('extract-frames', async (event, { videoPath, outputDir, interval, saveFrames = false, onProgress }) => {
-  // 更新全局变量，确保createSlidesDir可以访问到当前处理的视频路径
+  // Update global variable, ensuring createSlidesDir can access the current video path
   global.selectedVideoPath = videoPath;
   return new Promise((resolve, reject) => {
     try {
-      // 确保输出目录存在
+      // Ensure output directory exists
       ensureDirectoryExists(outputDir);
       
-      // 获取视频信息
+      // Get video info
       ffmpeg.ffprobe(videoPath, (err, metadata) => {
         if (err) {
           reject(err.message);
@@ -200,51 +202,56 @@ ipcMain.handle('extract-frames', async (event, { videoPath, outputDir, interval,
         const totalFrames = Math.floor(duration / interval);
         let processedFrames = 0;
         
-        // 创建时间戳目录
+        // Create timestamp directory
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const framesDir = path.join(outputDir, `frames_${timestamp}`);
         
-        // 只有在需要保存帧时才创建目录
+        // Only create directory if frames need to be saved
         if (saveFrames && !fs.existsSync(framesDir)) {
           fs.mkdirSync(framesDir, { recursive: true });
         }
         
-        // 创建临时目录用于处理
+        // Create temporary directory for processing
         const tempDir = path.join(app.getPath('temp'), `frames_temp_${timestamp}`);
         if (!fs.existsSync(tempDir)) {
           fs.mkdirSync(tempDir, { recursive: true });
         }
         
-        // 设置抽帧命令
+        // Set up frame extraction command
         const command = ffmpeg(videoPath)
           .outputOptions([
-            `-vf fps=1/${interval}`,  // 每隔interval秒抽取一帧
-            '-q:v 1'                  // 最高质量
+            `-vf fps=1/${interval}`,  // Extract one frame every interval seconds
+            '-q:v 1'                  // Highest quality
           ])
           .output(path.join(saveFrames ? framesDir : tempDir, 'frame-%04d.jpg'))
           .on('progress', (progress) => {
-            // 计算进度
+            // Calculate progress
             const currentTime = progress.timemark.split(':');
             const seconds = parseInt(currentTime[0]) * 3600 + 
                           parseInt(currentTime[1]) * 60 + 
                           parseFloat(currentTime[2]);
             const percent = Math.min(100, Math.round((seconds / duration) * 100));
             
-            // 通知渲染进程进度更新
+            // Notify renderer process of progress update
             event.sender.send('extraction-progress', { percent, currentTime: seconds, totalTime: duration });
           })
           .on('end', () => {
+            activeFFmpegCommand = null; // Clear the reference when done
             resolve({
               framesDir: saveFrames ? framesDir : tempDir,
               totalFrames: Math.floor(duration / interval),
-              tempDir: !saveFrames ? tempDir : null // 返回临时目录路径，以便后续清理
+              tempDir: !saveFrames ? tempDir : null // Return temp directory path for later cleanup
             });
           })
           .on('error', (err) => {
+            activeFFmpegCommand = null; // Clear the reference on error
             reject(`Frame extraction error: ${err.message}`);
           });
         
-        // 执行命令
+        // Store the command reference so we can kill it if needed
+        activeFFmpegCommand = command;
+        
+        // Execute command
         command.run();
       });
     } catch (error) {
@@ -253,14 +260,28 @@ ipcMain.handle('extract-frames', async (event, { videoPath, outputDir, interval,
   });
 });
 
-// 保存幻灯片
+// Add a new IPC handler to cancel the ffmpeg process
+ipcMain.handle('cancel-extraction', () => {
+  return new Promise((resolve) => {
+    if (activeFFmpegCommand) {
+      // Kill the ffmpeg process
+      activeFFmpegCommand.kill('SIGKILL');
+      activeFFmpegCommand = null;
+      resolve({ success: true });
+    } else {
+      resolve({ success: false, message: 'No active ffmpeg process to cancel' });
+    }
+  });
+});
+
+// Save Slides
 ipcMain.handle('save-slide', async (event, { imageData, outputDir, filename }) => {
   return new Promise((resolve, reject) => {
     try {
-      // 确保输出目录存在
+      // Ensure the output directory exists
       ensureDirectoryExists(outputDir);
       
-      // 将Base64图像数据写入文件
+      // Write Base64 image data to a file
       const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
       const buffer = Buffer.from(base64Data, 'base64');
       const filePath = path.join(outputDir, filename);
@@ -278,21 +299,21 @@ ipcMain.handle('save-slide', async (event, { imageData, outputDir, filename }) =
   });
 });
 
-// 列出帧文件
+// List frame files
 ipcMain.handle('list-frame-files', async (event, dirPath) => {
   return new Promise((resolve, reject) => {
     try {
-      // 确保目录存在
+      // Ensure the directory exists
       if (!fs.existsSync(dirPath)) {
         reject('Directory does not exist');
         return;
       }
       
-      // 读取目录中的文件
+      // Read files in the directory
       const files = fs.readdirSync(dirPath)
         .filter(file => file.endsWith('.jpg'))
         .sort((a, b) => {
-          // 按帧号排序
+          // Sort by frame number
           const numA = parseInt(a.match(/frame-(\d+)/)[1]);
           const numB = parseInt(b.match(/frame-(\d+)/)[1]);
           return numA - numB;
@@ -309,17 +330,17 @@ ipcMain.handle('list-frame-files', async (event, dirPath) => {
   });
 });
 
-// 读取帧图像
+// Read frame image
 ipcMain.handle('read-frame-image', async (event, filePath) => {
   return new Promise((resolve, reject) => {
     try {
-      // 确保文件存在
+      // Ensure the file exists
       if (!fs.existsSync(filePath)) {
         reject('File does not exist');
         return;
       }
       
-      // 读取文件
+      // Read file
       const frameData = fs.readFileSync(filePath);
       const base64Data = `data:image/jpeg;base64,${frameData.toString('base64')}`;
       
@@ -330,26 +351,26 @@ ipcMain.handle('read-frame-image', async (event, filePath) => {
   });
 });
 
-// 创建幻灯片目录
+// Create Slide Directory
 ipcMain.handle('create-slides-dir', async (event, baseDir) => {
   return new Promise((resolve, reject) => {
     try {
-      // 获取当前选择的视频路径
+      // Get the currently selected video path
       const videoPath = global.selectedVideoPath;
       let folderName = 'slides_';
       
-      // 如果有视频路径，使用视频文件名（空格替换为下划线）
+      // If there is a video path, use the video file name (replace spaces with underscores).
       if (videoPath) {
-        // 提取文件名（不含扩展名）
+        // Extract file name (without extension)
         const videoFileName = path.basename(videoPath, path.extname(videoPath));
-        // 替换空格为下划线
+        // Replace spaces with underscores
         folderName = videoFileName.replace(/\s+/g, '_');
       } else {
-        // 如果没有视频路径，使用时间戳作为备选
+        // If there is no video path, use the timestamp as an alternative.
         folderName = 'slides_' + new Date().toISOString().replace(/[:.]/g, '-');
       }
       
-      // 创建幻灯片输出目录
+      // Create slide output directory
       const slidesDir = path.join(baseDir, folderName);
       if (!fs.existsSync(slidesDir)) {
         fs.mkdirSync(slidesDir, { recursive: true });
@@ -362,18 +383,18 @@ ipcMain.handle('create-slides-dir', async (event, baseDir) => {
   });
 });
 
-// 清理临时目录
+// Clean up temporary directory
 ipcMain.handle('cleanup-temp-dir', async (event, tempDir) => {
   return new Promise((resolve, reject) => {
     try {
       if (tempDir && fs.existsSync(tempDir)) {
-        // 删除临时目录中的所有文件
+        // Delete all files in the temporary directory
         const files = fs.readdirSync(tempDir);
         for (const file of files) {
           fs.unlinkSync(path.join(tempDir, file));
         }
         
-        // 删除临时目录
+        // Delete temporary directory
         fs.rmdirSync(tempDir);
         resolve({ success: true });
       } else {
@@ -381,8 +402,9 @@ ipcMain.handle('cleanup-temp-dir', async (event, tempDir) => {
       }
     } catch (error) {
       console.error('Failed to cleanup temporary directory:', error);
-      // 即使清理失败也不抛出异常，避免影响用户体验
+      // Even if the cleanup fails, do not throw an exception to avoid affecting the user experience.
       resolve({ success: false, message: error.message });
     }
   });
 });
+

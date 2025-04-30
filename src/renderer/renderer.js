@@ -1,4 +1,4 @@
-// 获取DOM元素
+// Get DOM element
 const inputVideo = document.getElementById('inputVideo');
 const inputOutputDir = document.getElementById('inputOutputDir');
 const inputCheckInterval = document.getElementById('inputCheckInterval');
@@ -6,6 +6,7 @@ const btnSelectVideo = document.getElementById('btnSelectVideo');
 const btnSelectDir = document.getElementById('btnSelectDir');
 const btnStartProcess = document.getElementById('btnStartProcess');
 const btnStopProcess = document.getElementById('btnStopProcess');
+const btnReset = document.getElementById('btnReset');
 const progressBar = document.getElementById('progressBar');
 const progressFill = progressBar.querySelector('.progress-fill');
 const progressText = document.getElementById('progressText');
@@ -17,23 +18,23 @@ const slidesContainer = document.getElementById('slidesContainer');
 const comparisonMethod = document.getElementById('comparisonMethod');
 const enableDoubleVerification = document.getElementById('enableDoubleVerification');
 
-// 阈值参数设置
+// Threshold parameter settings
 // pHash 和 SSIM 相关阈值
-const HAMMING_THRESHOLD_UP = 5;       // 感知哈希汉明距离上限阈值
-const SSIM_THRESHOLD = 0.999;         // 结构相似性指数阈值
+const HAMMING_THRESHOLD_UP = 5;       // Perception Hash Hamming Distance Upper Threshold
+const SSIM_THRESHOLD = 0.999;         // Structure Similarity Index Threshold
 
-// 基本像素比较相关阈值
-const PIXEL_CHANGE_RATIO_THRESHOLD = 0.005;  // 基本比较中的变化率阈值
-const PIXEL_DIFF_THRESHOLD = 30;      // 像素差异阈值
+// Basic pixel comparison related threshold
+const PIXEL_CHANGE_RATIO_THRESHOLD = 0.005;  // Base comparison method's change rate threshold
+const PIXEL_DIFF_THRESHOLD = 30;      // Pixel difference threshold
 
-// SSIM 计算相关常数
-const SSIM_C1_FACTOR = 0.01;          // SSIM 计算中的 C1 因子
-const SSIM_C2_FACTOR = 0.03;          // SSIM 计算中的 C2 因子
+// SSIM calculation related constants
+const SSIM_C1_FACTOR = 0.01;          // C1 factor in SSIM calculation
+const SSIM_C2_FACTOR = 0.03;          // C2 factor in SSIM calculation
 
-// 验证相关阈值
-const VERIFICATION_COUNT = 2;         // 二次校验需要的连续相同帧数
+// Validation-related thresholds
+const VERIFICATION_COUNT = 2;         // The number of consecutive identical frames required for secondary verification
 
-// 全局变量
+// Global variable
 let selectedVideoPath = '';
 let framesDir = '';
 let isProcessing = false;
@@ -45,9 +46,9 @@ let currentVerification = 0;
 let potentialNewImageData = null;
 let timerInterval = null;
 
-// 初始化
+// Initialize
 document.addEventListener('DOMContentLoaded', async () => {
-  // 加载配置
+  // Load configuration
   try {
     const config = await window.electronAPI.getConfig();
     inputOutputDir.value = config.outputDir || '';
@@ -59,14 +60,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
-// 事件监听器
+// Event Listener
 btnSelectVideo.addEventListener('click', async () => {
   const videoPath = await window.electronAPI.selectVideoFile();
   if (videoPath) {
     selectedVideoPath = videoPath;
     inputVideo.value = videoPath;
     
-    // 获取视频信息
+    // Get video information
     try {
       statusText.textContent = 'Getting video information...';
       const videoInfo = await window.electronAPI.getVideoInfo(videoPath);
@@ -95,10 +96,10 @@ btnStartProcess.addEventListener('click', async () => {
     return;
   }
   
-  // 保存配置
+  // Save configuration
   await saveConfig();
   
-  // 开始处理
+  // Start processing
   startProcessing();
 });
 
@@ -106,7 +107,11 @@ btnStopProcess.addEventListener('click', () => {
   stopProcessing();
 });
 
-// 保存配置
+btnReset.addEventListener('click', () => {
+  resetUI();
+});
+
+// Save configuration
 async function saveConfig() {
   try {
     const config = {
@@ -126,8 +131,10 @@ async function saveConfig() {
   }
 }
 
-// 开始处理视频
+// Start processing video
 async function startProcessing() {
+  let tempDir = null; // Move declaration here to make it accessible in finally block
+  
   try {
     isProcessing = true;
     processStartTime = Date.now();
@@ -137,9 +144,10 @@ async function startProcessing() {
     potentialNewImageData = null;
     currentVerification = 0;
     
-    // 更新UI
+    // Update UI
     btnStartProcess.disabled = true;
     btnStopProcess.disabled = false;
+    btnReset.disabled = true; // Disable Reset button during processing
     progressFill.style.width = '0%';
     progressText.textContent = '0%';
     totalFrames.textContent = '0';
@@ -148,53 +156,51 @@ async function startProcessing() {
     slidesContainer.innerHTML = '';
     statusText.textContent = 'Extracting video frames...';
     
-    // 启动实时计时器
+    // Start real-time timer
     startTimer();
     
-    // 抽取视频帧
+    // Extract video frames
     const interval = parseFloat(inputCheckInterval.value);
     
-    // 移除之前可能存在的监听器
+    // Remove any existing listeners.
     window.electronAPI.removeAllListeners();
     
     const result = await window.electronAPI.extractFrames({
       videoPath: selectedVideoPath,
       outputDir: inputOutputDir.value,
       interval: interval,
-      saveFrames: false, // 不保存中间帧文件
-      onProgress: updateProgress // 添加进度更新回调
+      saveFrames: false, // Do not save intermediate frame files
+      onProgress: updateProgress // Add progress update callback
     });
     
     framesDir = result.framesDir;
-    const tempDir = result.tempDir; // 保存临时目录路径，用于后续清理
+    tempDir = result.tempDir; // Save the temporary directory path for subsequent cleanup
     totalFrames.textContent = result.totalFrames;
     
-    // 处理抽取的帧
+    // Process the extracted frames
     statusText.textContent = 'Analyzing frames...';
     await processFrames(framesDir);
     
-    // 完成处理
-    stopTimer(); // 停止计时器
+    // Complete processing
+    stopTimer(); // Stop the timer
     statusText.textContent = `Processing complete, extracted ${extractedCount} slides`;
-    
-    // 清理临时目录
-    if (tempDir) {
-      try {
-        await window.electronAPI.cleanupTempDir(tempDir);
-      } catch (error) {
-        console.error('Failed to cleanup temporary directory:', error);
-      }
-    }
     
   } catch (error) {
     console.error('Failed to process video:', error);
-    statusText.textContent = `Processing failed: ${error}`;
+    
+    // Check if this was a manual stop (don't show error in that case)
+    if (!isProcessing && error.message && error.message.includes('killed with signal SIGKILL')) {
+      statusText.textContent = 'Processing stopped';
+    } else {
+      statusText.textContent = `Processing failed: ${error}`;
+    }
   } finally {
     isProcessing = false;
     btnStartProcess.disabled = false;
     btnStopProcess.disabled = true;
+    btnReset.disabled = false; // Re-enable Reset button when processing ends
 
-    // 清理临时目录
+    // Clear temporary directory
     if (tempDir) {
       try {
         await window.electronAPI.cleanupTempDir(tempDir);
@@ -205,25 +211,58 @@ async function startProcessing() {
   }
 }
 
-// 停止处理
-function stopProcessing() {
+// Stop processing
+async function stopProcessing() {
   if (isProcessing) {
     isProcessing = false;
-    statusText.textContent = 'Processing stopped';
+    statusText.textContent = 'Stopping processing...';
+    
+    // Cancel the ffmpeg process
+    try {
+      await window.electronAPI.cancelExtraction();
+      statusText.textContent = 'Processing stopped';
+    } catch (error) {
+      console.error('Failed to stop processing:', error);
+      statusText.textContent = 'Failed to stop processing';
+    }
+    
     btnStartProcess.disabled = false;
     btnStopProcess.disabled = true;
+    btnReset.disabled = false; // Re-enable Reset button when processing is stopped
     stopTimer();
   }
 }
 
-// 启动计时器
+// Reset UI
+function resetUI() {
+  // Reset progress bar
+  progressFill.style.width = '0%';
+  progressText.textContent = '0%';
+  
+  // Reset statistics data
+  totalFrames.textContent = '0';
+  extractedSlides.textContent = '0';
+  processingTime.textContent = '0s';
+  
+  // Clear slide preview
+  slidesContainer.innerHTML = '';
+  
+  // Reset state text
+  statusText.textContent = 'Ready';
+  
+  // Clear video path
+  selectedVideoPath = '';
+  inputVideo.value = '';
+}
+
+// Start timer
 function startTimer() {
-  // 清除可能存在的旧计时器
+  // Clear any existing old timers
   if (timerInterval) {
     clearInterval(timerInterval);
   }
   
-  // 设置新计时器，每秒更新一次
+  // Set a new timer, updating every second
   timerInterval = setInterval(() => {
     if (isProcessing) {
       const currentTime = Date.now();
@@ -233,7 +272,7 @@ function startTimer() {
   }, 1000);
 }
 
-// 停止计时器
+// Stop the timer
 function stopTimer() {
   if (timerInterval) {
     clearInterval(timerInterval);
@@ -241,7 +280,7 @@ function stopTimer() {
   }
 }
 
-// 更新进度
+// Update progress
 function updateProgress(progress) {
   if (!isProcessing) return;
   
@@ -251,35 +290,35 @@ function updateProgress(progress) {
   statusText.textContent = `Extracting video frames... ${Math.round(progress.currentTime)}/${Math.round(progress.totalTime)}Seconds`;
 }
 
-// 处理抽取的帧
+// Process the extracted frames
 async function processFrames(framesDir) {
   try {
-    // 获取所有帧文件 - 通过主进程API获取文件列表
+    // Get all frame files - Retrieve the file list through the main process API
     const result = await window.electronAPI.listFrameFiles(framesDir);
     const frameFiles = result.files;
     
-    // 创建幻灯片输出目录
+    // Create slide output directory
     const slidesDir = await window.electronAPI.createSlidesDir(inputOutputDir.value);
     
-    // 处理每一帧
+    // Process each frame
     for (let i = 0; i < frameFiles.length; i++) {
-      if (!isProcessing) break; // 检查是否停止处理
+      if (!isProcessing) break; // Check if processing has stopped
       
       processedFrames++;
       const frameFile = frameFiles[i];
-      // 使用完整路径，不再使用path.join
+      // Use the full path, no longer use path.join
       const framePath = frameFiles[i].fullPath || `${framesDir}/${frameFile}`;
       
-      // 更新进度
+      // Update progress
       const percent = Math.round((processedFrames / frameFiles.length) * 100);
       progressFill.style.width = `${percent}%`;
       progressText.textContent = `${percent}%`;
       statusText.textContent = `Analyzing frame ${processedFrames}/${frameFiles.length}`;
       
-      // 读取帧图像 - 通过主进程API读取
+      // Read frame image - Read through the main process API
       const base64Data = await window.electronAPI.readFrameImage(framePath);
       
-      // 第一帧直接保存
+      // Save the first frame directly
       if (lastImageData === null) {
         lastImageData = base64Data;
         await saveSlide(base64Data, slidesDir, 'slide-001.jpg');
@@ -288,28 +327,28 @@ async function processFrames(framesDir) {
         continue;
       }
       
-      // 比较当前帧与上一帧
+      // Compare the current frame with the previous frame
       const comparisonResult = await compareImages(lastImageData, base64Data);
       
-      // 如果检测到变化
+      // If a change is detected
       if (comparisonResult.changed) {
         console.log(`Change detected: ${comparisonResult.method}, Rate of change: ${comparisonResult.changeRatio.toFixed(4)}`);
         
-        // 如果启用二次校验
+        // If secondary verification is enabled
         if (enableDoubleVerification.checked) {
           if (potentialNewImageData === null) {
-            // 第一次检测到变化
+            // First detection of change
             potentialNewImageData = base64Data;
             currentVerification = 1;
           } else if (currentVerification < VERIFICATION_COUNT) {
-            // 比较当前帧与潜在新帧
+            // Compare the current frame with the potential new frame
             const verificationResult = await compareImages(potentialNewImageData, base64Data);
             
             if (!verificationResult.changed) {
-              // 帧相同，增加验证计数
+              // Frame identical, increase verification count
               currentVerification++;
               
-              // 达到验证次数，保存幻灯片
+              // Reached verification count, save the slide
               if (currentVerification >= VERIFICATION_COUNT) {
                 lastImageData = potentialNewImageData;
                 extractedCount++;
@@ -317,18 +356,18 @@ async function processFrames(framesDir) {
                 await saveSlide(lastImageData, slidesDir, `slide-${slideNumber}.jpg`);
                 extractedSlides.textContent = extractedCount;
                 
-                // 重置验证状态
+                // Reset verification status
                 potentialNewImageData = null;
                 currentVerification = 0;
               }
             } else {
-              // 帧不同，更新潜在新帧
+              // Frames are different, update potential new frames
               potentialNewImageData = base64Data;
               currentVerification = 1;
             }
           }
         } else {
-          // 不使用二次校验，直接保存
+          // Do not use secondary verification, save directly
           lastImageData = base64Data;
           extractedCount++;
           const slideNumber = String(extractedCount).padStart(3, '0');
@@ -336,14 +375,14 @@ async function processFrames(framesDir) {
           extractedSlides.textContent = extractedCount;
         }
       } else if (potentialNewImageData !== null && enableDoubleVerification.checked) {
-        // 比较当前帧与潜在新帧
+        // Compare the current frame with the potential new frame
         const verificationResult = await compareImages(potentialNewImageData, base64Data);
         
         if (!verificationResult.changed) {
-          // 帧相同，增加验证计数
+          // Frame identical, increase verification count
           currentVerification++;
           
-          // 达到验证次数，保存幻灯片
+          // Reached verification count, save the slide
           if (currentVerification >= VERIFICATION_COUNT) {
             lastImageData = potentialNewImageData;
             extractedCount++;
@@ -351,12 +390,12 @@ async function processFrames(framesDir) {
             await saveSlide(lastImageData, slidesDir, `slide-${slideNumber}.jpg`);
             extractedSlides.textContent = extractedCount;
             
-            // 重置验证状态
+            // Reset verification status
             potentialNewImageData = null;
             currentVerification = 0;
           }
         } else {
-          // 帧不同，更新潜在新帧
+          // Frames are different, update potential new frames
           potentialNewImageData = base64Data;
           currentVerification = 1;
         }
@@ -370,17 +409,17 @@ async function processFrames(framesDir) {
   }
 }
 
-// 保存幻灯片
+// Save slide
 async function saveSlide(imageData, outputDir, filename) {
   try {
-    // 保存到文件
+    // Save to file
     await window.electronAPI.saveSlide({
       imageData,
       outputDir,
       filename
     });
     
-    // 添加到预览区域
+    // Add to preview area
     addSlidePreview(imageData, filename);
     
     return true;
@@ -390,7 +429,7 @@ async function saveSlide(imageData, outputDir, filename) {
   }
 }
 
-// 添加幻灯片预览
+// Add slide preview
 function addSlidePreview(imageData, filename) {
   const slideItem = document.createElement('div');
   slideItem.className = 'slide-item';
@@ -408,9 +447,9 @@ function addSlidePreview(imageData, filename) {
   slidesContainer.appendChild(slideItem);
 }
 
-// 图像处理函数
+// Image processing function
 
-// 比较两张图像
+// Compare two images
 function compareImages(img1Data, img2Data) {
   return new Promise((resolve) => {
     const img1 = new Image();
@@ -432,14 +471,14 @@ function compareImages(img1Data, img2Data) {
         ctx1.drawImage(img1, 0, 0);
         ctx2.drawImage(img2, 0, 0);
         
-        // 获取图像数据
+        // Acquire image data
         const data1 = ctx1.getImageData(0, 0, canvas1.width, canvas1.height);
         const data2 = ctx2.getImageData(0, 0, canvas2.width, canvas2.height);
         
-        // 获取比较方法
+        // Get comparison method
         const method = comparisonMethod.value || 'default';
         
-        // 使用不同的比较策略
+        // Use different comparison strategies
         switch (method) {
           case 'basic':
             performBasicComparison(data1, data2, resolve);
@@ -448,7 +487,7 @@ function compareImages(img1Data, img2Data) {
             performPerceptualComparison(data1, data2, resolve);
             break;
           default:
-            performPerceptualComparison(data1, data2, resolve); // 默认使用感知哈希方法
+            performPerceptualComparison(data1, data2, resolve); // Default to using perceptual hash method
         }
       }
     }
@@ -468,17 +507,17 @@ function compareImages(img1Data, img2Data) {
   });
 }
 
-// 基本像素比较
+// Basic pixel comparison
 function performBasicComparison(data1, data2, resolve) {
-  // 转换为灰度
+  // Convert to grayscale
   data1 = convertToGrayscale(data1);
   data2 = convertToGrayscale(data2);
   
-  // 应用高斯模糊
+  // Apply Gaussian blur
   data1 = applyGaussianBlur(data1, 0.5);
   data2 = applyGaussianBlur(data2, 0.5);
   
-  // 比较像素
+  // Compare pixels
   const comparisonResult = comparePixels(data1, data2);
   
   resolve({
@@ -488,28 +527,28 @@ function performBasicComparison(data1, data2, resolve) {
   });
 }
 
-// 感知哈希比较
+// Perceptual Hash Comparison
 function performPerceptualComparison(data1, data2, resolve) {
   try {
-    // 计算感知哈希
+    // Calculate perceptual hash
     const hash1 = calculatePerceptualHash(data1);
     const hash2 = calculatePerceptualHash(data2);
     
-    // 计算汉明距离
+    // Calculate Hamming distance
     const hammingDistance = calculateHammingDistance(hash1, hash2);
     
     console.log(`pHash comparison: Hamming distance = ${hammingDistance}`);
     
     if (hammingDistance > HAMMING_THRESHOLD_UP) {
-      // 哈希显著不同
+      // Hash significantly different
       resolve({
         changed: true,
-        changeRatio: hammingDistance / 64, // 64位哈希
+        changeRatio: hammingDistance / 64, // 64-bit hash
         method: 'pHash',
         distance: hammingDistance
       });
     } else if (hammingDistance === 0) {
-      // 完全相同的哈希
+      // Completely identical hash
       resolve({
         changed: false,
         changeRatio: 0,
@@ -517,7 +556,7 @@ function performPerceptualComparison(data1, data2, resolve) {
         distance: 0
       });
     } else {
-      // 边界情况，使用SSIM
+      // Boundary conditions, using SSIM
       const ssim = calculateSSIM(data1, data2);
       
       console.log(`SSIM similarity: ${ssim.toFixed(6)}`);
@@ -531,32 +570,32 @@ function performPerceptualComparison(data1, data2, resolve) {
     }
   } catch (error) {
     console.error('Perceptual comparison error:', error);
-    performBasicComparison(data1, data2, resolve); // 回退到基本方法
+    performBasicComparison(data1, data2, resolve); // Roll back to basic method
   }
 }
 
-// 转换为灰度图像
+// Convert to grayscale image
 function convertToGrayscale(imageData) {
   const data = new Uint8ClampedArray(imageData.data);
   for (let i = 0; i < data.length; i += 4) {
     const r = data[i];
     const g = data[i + 1];
     const b = data[i + 2];
-    // 使用加权平均法计算灰度值
+    // Use the weighted average method to calculate the grayscale value
     const gray = 0.299 * r + 0.587 * g + 0.114 * b;
     data[i] = data[i + 1] = data[i + 2] = gray;
   }
   return new ImageData(data, imageData.width, imageData.height);
 }
 
-// 应用高斯模糊
+// Apply Gaussian Blur
 function applyGaussianBlur(imageData, sigma) {
-  // 创建高斯核
+  // Create Gaussian kernel
   const kernelSize = Math.max(3, Math.ceil(sigma * 3) * 2 + 1);
   const halfSize = Math.floor(kernelSize / 2);
   const kernel = new Array(kernelSize);
   
-  // 计算高斯核
+  // Compute Gaussian kernel
   let sum = 0;
   for (let i = 0; i < kernelSize; i++) {
     const x = i - halfSize;
@@ -564,18 +603,18 @@ function applyGaussianBlur(imageData, sigma) {
     sum += kernel[i];
   }
   
-  // 归一化
+  // Normalization
   for (let i = 0; i < kernelSize; i++) {
     kernel[i] /= sum;
   }
   
-  // 创建临时图像数据
+  // Create temporary image data
   const width = imageData.width;
   const height = imageData.height;
   const data = new Uint8ClampedArray(imageData.data);
   const temp = new Uint8ClampedArray(data);
   
-  // 水平方向模糊
+  // Horizontal blur
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       let r = 0, g = 0, b = 0;
@@ -594,11 +633,11 @@ function applyGaussianBlur(imageData, sigma) {
       temp[idx] = r;
       temp[idx + 1] = g;
       temp[idx + 2] = b;
-      temp[idx + 3] = data[idx + 3]; // 保持alpha不变
+      temp[idx + 3] = data[idx + 3]; // Keep alpha unchanged
     }
   }
   
-  // 垂直方向模糊
+  // Vertical blur
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       let r = 0, g = 0, b = 0;
@@ -617,21 +656,21 @@ function applyGaussianBlur(imageData, sigma) {
       data[idx] = r;
       data[idx + 1] = g;
       data[idx + 2] = b;
-      // Alpha保持不变
+      // Alpha remains unchanged
     }
   }
   
   return new ImageData(data, width, height);
 }
 
-// 比较像素
+// Compare Pixels
 function comparePixels(data1, data2) {
   const width = Math.min(data1.width, data2.width);
   const height = Math.min(data1.height, data2.height);
   const totalPixels = width * height;
   let diffCount = 0;
   
-  // 计算像素差异
+  // Calculate pixel difference
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
@@ -652,31 +691,31 @@ function comparePixels(data1, data2) {
   };
 }
 
-// 调整图像大小
+// Resize image
 function resizeImageData(imageData, newWidth, newHeight) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   
-  // 创建临时图像
+  // Create temporary image
   const img = new Image();
   const tempCanvas = document.createElement('canvas');
   const tempCtx = tempCanvas.getContext('2d');
   
-  // 设置临时画布为原始图像大小
+  // Set the temporary canvas to the original image size
   tempCanvas.width = imageData.width;
   tempCanvas.height = imageData.height;
   
-  // 创建ImageData并放到临时画布上
+  // Create ImageData and place it on a temporary canvas
   tempCtx.putImageData(imageData, 0, 0);
   
-  // 设置目标画布大小
+  // Set target canvas size
   canvas.width = newWidth;
   canvas.height = newHeight;
   
-  // 将调整大小后的图像绘制到目标画布
+  // Draw the resized image onto the target canvas
   ctx.drawImage(tempCanvas, 0, 0, imageData.width, imageData.height, 0, 0, newWidth, newHeight);
   
-  // 返回新的ImageData
+  // Return new ImageData
   return ctx.getImageData(0, 0, newWidth, newHeight);
 }
 
