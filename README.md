@@ -4,18 +4,14 @@
 
 AutoSlides Extractor 是一款基于 Electron 和 Node.js 的跨平台桌面应用，能够自动从各类视频文件中高效、精准地提取幻灯片页面。适用于在线课程录播、会议记录、学术讲座等场景，帮助用户快速获取视频中的关键幻灯片内容，极大提升资料整理与知识归档效率。
 
----
-
 ## 项目简介
 
-本项目是 `https://github.com/bit-admin/Yanhekt-AutoSlides` AutoSlides 项目的的独立工具程序，广泛适用于各类应用场景：
+本项目是 [AutoSlides](https://github.com/bit-admin/Yanhekt-AutoSlides) 项目的的独立工具程序，广泛适用于各类应用场景：
 
 - 线上课程、学术讲座视频的幻灯片归档
 - 企业会议、技术分享视频资料整理
 - 直播回放内容的知识点提取
 - 需要批量提取 PPT 页面的各类视频场景
-
----
 
 ## 功能亮点
 
@@ -24,8 +20,6 @@ AutoSlides Extractor 是一款基于 Electron 和 Node.js 的跨平台桌面应�
 - 可自定义检测间隔、输出目录、二次验证等参数
 - 实时进度显示与幻灯片预览
 - 跨平台支持（macOS、Windows）
-
----
 
 ## 安装指南
 
@@ -48,8 +42,6 @@ AutoSlides Extractor 是一款基于 Electron 和 Node.js 的跨平台桌面应�
 4. 可选择安装路径、是否创建桌面快捷方式等。
 5. 安装完成后，从开始菜单或桌面快捷方式启动应用。
 
----
-
 ## 快速上手
 
 1. 启动 **AutoSlides Extractor** 应用。
@@ -65,8 +57,6 @@ AutoSlides Extractor 是一款基于 Electron 和 Node.js 的跨平台桌面应�
 9. 提取完成后，在输出目录查看 PNG 格式幻灯片图片，并可在界面下方预览。
 10. 点击“重置”可清空当前状态和预览。
 
----
-
 ## 配置说明
 
 所有用户界面可配置项均会自动保存在用户数据目录下的 `config.json` 文件，便于下次启动时自动加载。主要配置项包括：
@@ -79,8 +69,6 @@ AutoSlides Extractor 是一款基于 Electron 和 Node.js 的跨平台桌面应�
 更底层参数及默认值可在源码中调整：
 - `src/main/main.js`：包含应用启动时的 `defaultConfig`，定义基础配置项的默认值。
 - `src/renderer/renderer.js`：定义前端交互逻辑，并包含核心图像对比算法的实现及相关常量阈值（如 `PIXEL_DIFF_THRESHOLD`, `PIXEL_CHANGE_RATIO_THRESHOLD`, `HAMMING_THRESHOLD_UP`, `SSIM_THRESHOLD`, `SSIM_C1_FACTOR`, `SSIM_C2_FACTOR`, `VERIFICATION_COUNT` 等）。
-
----
 
 ## 技术实现
 
@@ -95,8 +83,6 @@ AutoSlides Extractor 是一款基于 Electron 和 Node.js 的跨平台桌面应�
             - **决策逻辑**：在默认模式下，只有当 pHash 汉明距离 *大于* 阈值 **或** SSIM 值 *小于* 阈值时，才初步判断为潜在的幻灯片切换。
     - **二次验证 (`enableDoubleVerification`)**：为减少因短暂遮挡（如鼠标指针、临时通知）导致的误判，启用此选项后，当检测到潜在切换时，系统会缓存当前帧。只有当后续连续 `VERIFICATION_COUNT` (默认 2) 帧与该缓存帧保持足够高的相似度（即 pHash 和 SSIM 均未再次触发切换条件）时，才最终确认该缓存帧为新的幻灯片。
 - **配置管理**：自动保存用户设置，支持个性化参数调整
-
----
 
 ## 常见问题 FAQ
 
