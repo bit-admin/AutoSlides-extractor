@@ -2,8 +2,6 @@
 
 AutoSlides Extractor is a cross-platform desktop application based on Electron and Node.js, designed to efficiently and accurately extract slide pages from various video files. It is ideal for scenarios such as online course recordings, meeting notes, academic lectures, and more, helping users quickly obtain key slide content from videos and greatly improving the efficiency of data organization and knowledge archiving.
 
----
-
 ## Project Overview
 
 This project is an independent tool derived from the [AutoSlides project](https://github.com/bit-admin/Yanhekt-AutoSlides), suitable for a wide range of applications:
@@ -13,8 +11,6 @@ This project is an independent tool derived from the [AutoSlides project](https:
 - Extracting key points from live stream replays
 - Any scenario requiring batch extraction of PPT pages from videos
 
----
-
 ## Features
 
 - Supports major video formats: mp4, avi, mkv, mov, webm
@@ -22,8 +18,6 @@ This project is an independent tool derived from the [AutoSlides project](https:
 - Customizable detection interval, output directory, and double verification
 - Real-time progress display and slide preview
 - Cross-platform support (macOS, Windows)
-
----
 
 ## Installation Guide
 
@@ -34,7 +28,7 @@ This project is an independent tool derived from the [AutoSlides project](https:
 3. Open the `.dmg` file and drag the app into the `Applications` folder.
 4.  When running the application for the first time, you may receive a security warning. To bypass this warning, execute the following command:
    ```bash
-   sudo xattr -d com.apple.quarantine /Applications/AutoSlides.app
+   sudo xattr -d com.apple.quarantine /Applications/AutoSlides\ Extractor.app
    ```
 4. You can now launch the app from `Applications`.
 
@@ -45,8 +39,6 @@ This project is an independent tool derived from the [AutoSlides project](https:
 3. Run the installer and follow the wizard to complete installation.
 4. Choose the installation path and whether to create a desktop shortcut.
 5. After installation, launch the app from the Start menu or desktop shortcut.
-
----
 
 ## Quick Start
 
@@ -63,8 +55,6 @@ This project is an independent tool derived from the [AutoSlides project](https:
 9. After extraction, view PNG slide images in the output directory and preview them at the bottom of the interface.
 10. Click "Reset" to clear the current state and preview.
 
----
-
 ## Configuration
 
 All configurable options in the user interface are automatically saved in a `config.json` file under the user data directory for automatic loading on next startup. Main configuration items include:
@@ -77,8 +67,6 @@ All configurable options in the user interface are automatically saved in a `con
 Advanced parameters and defaults can be adjusted in the source code:
 - `src/main/main.js`: Contains `defaultConfig` for basic configuration defaults.
 - `src/renderer/renderer.js`: Defines frontend logic and core image comparison algorithms, including constants like `PIXEL_DIFF_THRESHOLD`, `PIXEL_CHANGE_RATIO_THRESHOLD`, `HAMMING_THRESHOLD_UP`, `SSIM_THRESHOLD`, `SSIM_C1_FACTOR`, `SSIM_C2_FACTOR`, `VERIFICATION_COUNT`, etc.
-
----
 
 ## Technical Details
 
@@ -93,8 +81,6 @@ Advanced parameters and defaults can be adjusted in the source code:
             - **Decision Logic**: In default mode, a potential slide transition is detected only if the pHash Hamming distance is *greater than* the threshold **or** the SSIM value is *less than* the threshold.
     - **Double Verification (`enableDoubleVerification`)**: To reduce false positives caused by brief occlusions (e.g., mouse pointer, notifications), enabling this option caches the current frame when a potential transition is detected. Only if the next `VERIFICATION_COUNT` (default 2) consecutive frames remain highly similar to the cached frame (i.e., neither pHash nor SSIM triggers a transition) is the cached frame confirmed as a new slide.
 - **Configuration Management**: User settings are saved automatically, supporting personalized parameter adjustments.
-
----
 
 ## FAQ
 

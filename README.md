@@ -30,7 +30,7 @@ AutoSlides Extractor 是一款基于 Electron 和 Node.js 的跨平台桌面应�
 3. 打开 `.dmg` 文件，将应用拖入 `Applications` 文件夹。
 4. 首次运行应用程序时，您可能会收到安全警告。要绕过此警告，请执行以下命令：
    ```bash
-   sudo xattr -d com.apple.quarantine /Applications/AutoSlides.app
+   sudo xattr -d com.apple.quarantine /Applications/AutoSlides\ Extractor.app
    ```
 5. 现在您可以从 `Applications` 启动应用。
 
