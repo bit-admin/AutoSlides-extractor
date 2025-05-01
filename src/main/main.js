@@ -104,7 +104,7 @@ function saveConfig(config) {
 function createWindow() {
   // Create browser window
   mainWindow = new BrowserWindow({
-    width: 540,
+    width: 550,
     height: 820,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

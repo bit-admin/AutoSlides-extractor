@@ -43,7 +43,7 @@
       "artifactName": "${productName}-${version}-macOS-${arch}.${ext}",
       "asarUnpack": [
         "node_modules/ffmpeg-static/ffmpeg",
-        "node_modules/ffprobe-static/bin/darwin/arm64/ffprobe"
+        "node_modules/ffprobe-static/bin/darwin/${arch}/ffprobe"
       ],
       "files": [
         "!node_modules/ffprobe-static/bin/darwin/x64"
@@ -64,7 +64,7 @@
       ],
       "extraResources": [
         {
-          "from": "build/binaries/win-x64",
+          "from": "build/binaries/win-${arch}",
           "to": "bin",
           "filter": ["**/*"]
         }
