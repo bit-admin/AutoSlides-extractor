@@ -33,10 +33,6 @@
       "buildResources": "build"
     },
     "asar": true,
-    "asarUnpack": [
-      "node_modules/ffmpeg-static/**/*",
-      "node_modules/ffprobe-static/**/*"
-    ],
     "compression": "maximum",
     "mac": {
       "category": "public.app-category.productivity",
@@ -44,7 +40,11 @@
       "target": [
         "dmg"
       ],
-      "artifactName": "${productName}-${version}-macOS-${arch}.${ext}"
+      "artifactName": "${productName}-${version}-macOS-${arch}.${ext}",
+      "asarUnpack": [
+        "node_modules/ffmpeg-static/**/*",
+        "node_modules/ffprobe-static/**/*"
+      ]
     },
     "dmg": {
       "background": "build/background.png"
@@ -54,7 +54,19 @@
         "nsis"
       ],
       "icon": "build/icon.ico",
-      "appId": "AutoSlides Extractor"
+      "appId": "AutoSlides Extractor",
+      "extraResources": [
+        {
+          "from": "build/binaries/win-x64",
+          "to": "bin/win-x64",
+          "filter": ["**/*"]
+        },
+        {
+          "from": "build/binaries/win-arm64", 
+          "to": "bin/win-arm64",
+          "filter": ["**/*"]
+        }
+      ]
     },
     "nsis": {
       "oneClick": false,

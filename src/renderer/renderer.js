@@ -19,7 +19,7 @@ const comparisonMethod = document.getElementById('comparisonMethod');
 const enableDoubleVerification = document.getElementById('enableDoubleVerification');
 
 // Threshold parameter settings
-// pHash 和 SSIM 相关阈值
+// pHash and SSIM related thresholds
 const HAMMING_THRESHOLD_UP = 5;       // Perception Hash Hamming Distance Upper Threshold
 const SSIM_THRESHOLD = 0.999;         // Structure Similarity Index Threshold
 

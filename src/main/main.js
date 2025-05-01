@@ -7,25 +7,52 @@ const ffprobeStatic = require('ffprobe-static');
 
 app.setName('AutoSlides Extractor'); 
 
-// Helper function to get correct binary path whether in development or production
-function getBinaryPath(binaryPath) {
-  if (process.env.NODE_ENV === 'development') {
-    // Use path directly in development
-    return binaryPath;
+let ffmpegPath, ffprobePath;
+
+if (app.isPackaged) {
+  // In production: use binaries from resources folder based on architecture
+  const binDir = path.join(process.resourcesPath, 'bin');
+  
+  if (process.platform === 'win32') {
+    // Determine Windows architecture
+    const arch = process.arch;
+    let archFolder = 'win-x64'; // Default to x64
+    
+    // Check if we're running on ARM
+    if (arch === 'arm64') {
+      archFolder = 'win-arm64';
+      console.log('Using ARM64 binaries');
+    } else {
+      console.log('Using x64 binaries');
+    }
+    
+    ffmpegPath = path.join(binDir, archFolder, 'ffmpeg.exe');
+    ffprobePath = path.join(binDir, archFolder, 'ffprobe.exe');
+  } else {
+    // For macOS - use the unpacked node_modules binaries
+    ffmpegPath = app.isPackaged ? 
+      path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', 'ffmpeg-static', 'ffmpeg') :
+      ffmpegStatic;
+    
+    ffprobePath = app.isPackaged ?
+      path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', 'ffprobe-static', 'bin', 'darwin', process.arch === 'arm64' ? 'arm64' : 'x64', 'ffprobe') :
+      ffprobeStatic.path;
+    
+    console.log('Using Mac binaries:');
+    console.log('ffmpeg:', ffmpegPath);
+    console.log('ffprobe:', ffprobePath);
   }
   
-  // In production, handle ASAR case
-  // If path includes 'app.asar', get the real path outside the ASAR archive
-  if (binaryPath.includes('app.asar')) {
-    return binaryPath.replace('app.asar', 'app.asar.unpacked');
-  }
-  
-  return binaryPath;
+  console.log('Using ffmpeg path:', ffmpegPath);
+  console.log('Using ffprobe path:', ffprobePath);
+} else {
+  // In development: use the npm packages
+  ffmpegPath = ffmpegStatic;
+  ffprobePath = ffprobeStatic.path;
 }
 
-// Set ffmpeg and ffprobe paths with proper resolution
-ffmpeg.setFfmpegPath(getBinaryPath(ffmpegStatic));
-ffmpeg.setFfprobePath(getBinaryPath(ffprobeStatic.path));
+ffmpeg.setFfmpegPath(ffmpegPath);
+ffmpeg.setFfprobePath(ffprobePath);
 
 let mainWindow;
 
