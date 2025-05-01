@@ -252,6 +252,8 @@ ipcMain.handle('extract-frames', async (event, { videoPath, outputDir, interval,
         const command = ffmpeg(videoPath)
           .outputOptions([
             `-vf fps=1/${interval}`,  // Extract one frame every interval seconds
+            `-threads 0`,             // Use all available threads
+            `-preset ultrafast`,      // Use ultrafast preset for faster processing
             '-q:v 1'                  // Highest quality
           ])
           .output(path.join(saveFrames ? framesDir : tempDir, 'frame-%04d.jpg'))
