@@ -202,10 +202,15 @@ button:disabled {
 .action-section {
   display: flex;
   gap: 12px;
-  flex-wrap: wrap;
-  justify-content: flex-start;
+  flex-wrap: nowrap;
+  justify-content: stretch;
   padding: 20px;
   background: linear-gradient(to right, #f8fafc, #f1f5f9);
+}
+
+.action-section button {
+  flex: 1;
+  white-space: nowrap;
 }
 
 .progress-section {

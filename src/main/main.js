@@ -2,8 +2,22 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
-const ffmpegStatic = require('ffmpeg-static');
-const ffprobeStatic = require('ffprobe-static');
+
+
+// Custom ffmpeg paths loader that won't break Windows builds
+let ffmpegStatic, ffprobeStatic;
+
+// Only try to load the modules in development mode
+if (!app.isPackaged) {
+  try {
+    ffmpegStatic = require('ffmpeg-static');
+    ffprobeStatic = require('ffprobe-static');
+  } catch (error) {
+    console.error('Failed to load ffmpeg modules:', error);
+    ffmpegStatic = null;
+    ffprobeStatic = null;
+  }
+}
 
 app.setName('AutoSlides Extractor'); 
 
@@ -11,44 +25,19 @@ let ffmpegPath, ffprobePath;
 
 if (app.isPackaged) {
   // In production: use binaries from resources folder based on architecture
-  const binDir = path.join(process.resourcesPath, 'bin');
-  
   if (process.platform === 'win32') {
-    // Determine Windows architecture
-    const arch = process.arch;
-    let archFolder = 'win-x64'; // Default to x64
-    
-    // Check if we're running on ARM
-    if (arch === 'arm64') {
-      archFolder = 'win-arm64';
-      console.log('Using ARM64 binaries');
-    } else {
-      console.log('Using x64 binaries');
-    }
-    
-    ffmpegPath = path.join(binDir, archFolder, 'ffmpeg.exe');
-    ffprobePath = path.join(binDir, archFolder, 'ffprobe.exe');
+    // Now we only include one architecture in each build, so simplify the path
+    ffmpegPath = path.join(process.resourcesPath, 'bin', 'ffmpeg.exe');
+    ffprobePath = path.join(process.resourcesPath, 'bin', 'ffprobe.exe');
   } else {
     // For macOS - use the unpacked node_modules binaries
-    ffmpegPath = app.isPackaged ? 
-      path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', 'ffmpeg-static', 'ffmpeg') :
-      ffmpegStatic;
-    
-    ffprobePath = app.isPackaged ?
-      path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', 'ffprobe-static', 'bin', 'darwin', process.arch === 'arm64' ? 'arm64' : 'x64', 'ffprobe') :
-      ffprobeStatic.path;
-    
-    console.log('Using Mac binaries:');
-    console.log('ffmpeg:', ffmpegPath);
-    console.log('ffprobe:', ffprobePath);
+    ffmpegPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', 'ffmpeg-static', 'ffmpeg');
+    ffprobePath = path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', 'ffprobe-static', 'bin', 'darwin', process.arch === 'arm64' ? 'arm64' : 'x64', 'ffprobe');
   }
-  
-  console.log('Using ffmpeg path:', ffmpegPath);
-  console.log('Using ffprobe path:', ffprobePath);
 } else {
   // In development: use the npm packages
   ffmpegPath = ffmpegStatic;
-  ffprobePath = ffprobeStatic.path;
+  ffprobePath = ffprobeStatic?.path;
 }
 
 ffmpeg.setFfmpegPath(ffmpegPath);
@@ -115,7 +104,7 @@ function saveConfig(config) {
 function createWindow() {
   // Create browser window
   mainWindow = new BrowserWindow({
-    width: 530,
+    width: 540,
     height: 820,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
