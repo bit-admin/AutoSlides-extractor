@@ -4,6 +4,9 @@ const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
 const sharp = require('sharp');
 
+// Debug mode flag - set to false to disable verbose logging
+const DEBUG_MODE = false;
+
 // Threshold parameter settings for image comparisons
 const HAMMING_THRESHOLD_UP = 5;       // Perception Hash Hamming Distance Upper Threshold
 const SSIM_THRESHOLD = 0.999;         // Structure Similarity Index Threshold
@@ -549,7 +552,9 @@ async function processFrames(event, frameFiles, slidesDir, options) {
       
       // If a change is detected
       if (comparisonResult.changed) {
-        console.log(`Change detected: ${comparisonResult.method}, Rate of change: ${comparisonResult.changeRatio.toFixed(4)}`);
+        if (DEBUG_MODE) {
+          console.log(`Change detected: ${comparisonResult.method}, Rate of change: ${comparisonResult.changeRatio.toFixed(4)}`);
+        }
         
         // If secondary verification is enabled
         if (enableDoubleVerification) {
@@ -814,7 +819,9 @@ async function performPerceptualComparison(img1, img2, metadata1, metadata2) {
     // Calculate Hamming distance
     const hammingDistance = calculateHammingDistance(hash1, hash2);
     
-    console.log(`pHash comparison: Hamming distance = ${hammingDistance}`);
+    if (DEBUG_MODE) {
+      console.log(`pHash comparison: Hamming distance = ${hammingDistance}`);
+    }
     
     if (hammingDistance > HAMMING_THRESHOLD_UP) {
       // Hash significantly different
@@ -836,7 +843,9 @@ async function performPerceptualComparison(img1, img2, metadata1, metadata2) {
       // Boundary conditions, using SSIM-like analysis
       const ssim = await calculateSSIM(img1, img2);
       
-      console.log(`SSIM similarity: ${ssim.toFixed(6)}`);
+      if (DEBUG_MODE) {
+        console.log(`SSIM similarity: ${ssim.toFixed(6)}`);
+      }
       
       return {
         changed: ssim < SSIM_THRESHOLD,
