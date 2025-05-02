@@ -17,6 +17,8 @@ const PIXEL_DIFF_THRESHOLD = 30;      // Pixel difference threshold
 const SSIM_C1_FACTOR = 0.01;          // C1 factor in SSIM calculation
 const SSIM_C2_FACTOR = 0.03;          // C2 factor in SSIM calculation
 const VERIFICATION_COUNT = 2;         // The number of consecutive identical frames required for secondary verification
+const SIZE_IDENTICAL_THRESHOLD = 0.0005; // 0.05% file size difference threshold for identical images
+const SIZE_DIFF_THRESHOLD = 0.05;     // 5% file size difference threshold for different images
 
 // Multi-core processing settings
 const MAX_WORKERS = Math.max(1, os.cpus().length - 1); // Leave one core free for the main thread
@@ -531,7 +533,9 @@ async function processFrames(event, frameFiles, slidesDir, options) {
             SSIM_C1_FACTOR,
             SSIM_C2_FACTOR,
             VERIFICATION_COUNT,
-            DEBUG_MODE
+            DEBUG_MODE,
+            SIZE_IDENTICAL_THRESHOLD,
+            SIZE_DIFF_THRESHOLD
           }
         }
       });
@@ -998,7 +1002,6 @@ async function compareImages(buffer1, buffer2, method = 'default') {
     const sizeRatio = sizeDifference / Math.max(buffer1.length, buffer2.length);
     
     // If the file sizes are extremely similar (difference less than the threshold), directly determine them as the same image.
-    const SIZE_IDENTICAL_THRESHOLD = 0.0005; // 0.05% difference threshold
     if (sizeRatio < SIZE_IDENTICAL_THRESHOLD) {
       if (DEBUG_MODE) {
         console.log(`File size nearly identical: ${sizeRatio.toFixed(6)}, buffer1: ${buffer1.length}, buffer2: ${buffer2.length}`);
@@ -1014,7 +1017,6 @@ async function compareImages(buffer1, buffer2, method = 'default') {
     
     // If the file size difference exceeds the threshold, directly determine them as different images.
     // Set a 5% file size difference threshold, which can be adjusted according to actual needs.
-    const SIZE_DIFF_THRESHOLD = 0.05;
     if (sizeRatio > SIZE_DIFF_THRESHOLD) {
       if (DEBUG_MODE) {
         console.log(`File size difference detected: ${sizeRatio.toFixed(4)}, buffer1: ${buffer1.length}, buffer2: ${buffer2.length}`);
