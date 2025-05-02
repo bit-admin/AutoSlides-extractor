@@ -32,8 +32,33 @@ contextBridge.exposeInMainWorld('electronAPI', {
   createSlidesDir: (baseDir) => ipcRenderer.invoke('create-slides-dir', baseDir),
   cleanupTempDir: (tempDir) => ipcRenderer.invoke('cleanup-temp-dir', tempDir),
   
+  // New method for analyzing frames in the main process
+  analyzeFrames: (options) => {
+    // Setup event listeners for progress and slide extraction
+    ipcRenderer.on('analysis-progress', (event, progress) => {
+      if (typeof options.onProgress === 'function') {
+        options.onProgress(progress);
+      }
+    });
+    
+    ipcRenderer.on('slide-extracted', (event, slideInfo) => {
+      if (typeof options.onSlideExtracted === 'function') {
+        options.onSlideExtracted(slideInfo);
+      }
+    });
+    
+    // Prepare serializable options
+    const serializableOptions = { ...options };
+    delete serializableOptions.onProgress;
+    delete serializableOptions.onSlideExtracted;
+    
+    return ipcRenderer.invoke('analyze-frames', serializableOptions);
+  },
+  
   // Remove all listeners
   removeAllListeners: () => {
     ipcRenderer.removeAllListeners('extraction-progress');
+    ipcRenderer.removeAllListeners('analysis-progress');
+    ipcRenderer.removeAllListeners('slide-extracted');
   }
 });
