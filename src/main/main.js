@@ -733,6 +733,42 @@ async function createSlidesDir(baseDir) {
 // Compare two images using Sharp
 async function compareImages(buffer1, buffer2, method = 'default') {
   try {
+    // Add file size comparison as initial screening
+    const sizeDifference = Math.abs(buffer1.length - buffer2.length);
+    const sizeRatio = sizeDifference / Math.max(buffer1.length, buffer2.length);
+    
+    // If the file sizes are extremely similar (difference less than the threshold), directly determine them as the same image.
+    const SIZE_IDENTICAL_THRESHOLD = 0.0005; // 0.05% difference threshold
+    if (sizeRatio < SIZE_IDENTICAL_THRESHOLD) {
+      if (DEBUG_MODE) {
+        console.log(`File size nearly identical: ${sizeRatio.toFixed(6)}, buffer1: ${buffer1.length}, buffer2: ${buffer2.length}`);
+      }
+      return {
+        changed: false,
+        method: 'file-size-identical',
+        changeRatio: 0,
+        size1: buffer1.length,
+        size2: buffer2.length
+      };
+    }
+    
+    // If the file size difference exceeds the threshold, directly determine them as different images.
+    // Set a 5% file size difference threshold, which can be adjusted according to actual needs.
+    const SIZE_DIFF_THRESHOLD = 0.05;
+    if (sizeRatio > SIZE_DIFF_THRESHOLD) {
+      if (DEBUG_MODE) {
+        console.log(`File size difference detected: ${sizeRatio.toFixed(4)}, buffer1: ${buffer1.length}, buffer2: ${buffer2.length}`);
+      }
+      return {
+        changed: true,
+        method: 'file-size',
+        changeRatio: sizeRatio,
+        size1: buffer1.length,
+        size2: buffer2.length
+      };
+    }
+    
+    // The file sizes are similar, conducting a more detailed image analysis.
     // Convert buffers to Sharp image objects
     const img1 = sharp(buffer1);
     const img2 = sharp(buffer2);
