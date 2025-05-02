@@ -3,6 +3,8 @@ const path = require('path');
 const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
 const sharp = require('sharp');
+const os = require('os');
+const { Worker } = require('worker_threads');
 
 // Debug mode flag - set to false to disable verbose logging
 const DEBUG_MODE = false;
@@ -15,6 +17,10 @@ const PIXEL_DIFF_THRESHOLD = 30;      // Pixel difference threshold
 const SSIM_C1_FACTOR = 0.01;          // C1 factor in SSIM calculation
 const SSIM_C2_FACTOR = 0.03;          // C2 factor in SSIM calculation
 const VERIFICATION_COUNT = 2;         // The number of consecutive identical frames required for secondary verification
+
+// Multi-core processing settings
+const MAX_WORKERS = Math.max(1, os.cpus().length - 1); // Leave one core free for the main thread
+const ENABLE_MULTI_CORE = true;       // Set to false to use only a single core
 
 // Custom ffmpeg paths loader that won't break Windows builds
 let ffmpegStatic, ffprobeStatic;
@@ -487,8 +493,141 @@ ipcMain.handle('analyze-frames', async (event, {
   }
 });
 
-// Process frames to detect slides
+// Process frames to detect slides with multi-core support
 async function processFrames(event, frameFiles, slidesDir, options) {
+  // If multi-core is disabled, use the original single-core method
+  if (!ENABLE_MULTI_CORE) {
+    return await processFramesSingleCore(event, frameFiles, slidesDir, options);
+  }
+  
+  const { comparisonMethod, enableDoubleVerification } = options;
+  
+  // Track progress
+  let processedFrames = 0;
+  const totalFrames = frameFiles.length;
+  
+  try {
+    // Calculate optimal chunk size based on available cores
+    const workerCount = Math.min(MAX_WORKERS, Math.ceil(totalFrames / 100));
+    const chunkSize = Math.ceil(totalFrames / workerCount);
+    
+    if (DEBUG_MODE) {
+      console.log(`Using ${workerCount} workers with chunk size of ${chunkSize} frames`);
+    }
+    
+    // Create workers
+    const workers = [];
+    const tasks = [];
+    
+    // Create and initialize workers
+    for (let i = 0; i < workerCount; i++) {
+      const worker = new Worker(path.join(__dirname, 'workers', 'image-processor.js'), {
+        workerData: {
+          constants: {
+            HAMMING_THRESHOLD_UP,
+            SSIM_THRESHOLD,
+            PIXEL_CHANGE_RATIO_THRESHOLD,
+            PIXEL_DIFF_THRESHOLD,
+            SSIM_C1_FACTOR,
+            SSIM_C2_FACTOR,
+            VERIFICATION_COUNT,
+            DEBUG_MODE
+          }
+        }
+      });
+      
+      workers.push(worker);
+      
+      // Wait for worker to be ready
+      await new Promise((resolve) => {
+        worker.once('message', (message) => {
+          if (message.type === 'ready') {
+            resolve();
+          }
+        });
+      });
+    }
+    
+    // Divide frames into chunks
+    const chunks = [];
+    for (let i = 0; i < workerCount; i++) {
+      const startIndex = i * chunkSize;
+      const endIndex = Math.min(startIndex + chunkSize, frameFiles.length);
+      chunks.push(frameFiles.slice(startIndex, endIndex));
+    }
+    
+    // Process each chunk with its worker
+    for (let i = 0; i < workerCount; i++) {
+      const worker = workers[i];
+      const chunk = chunks[i];
+      const startIndex = i * chunkSize;
+      
+      // If this isn't the first chunk, we need to provide the last frame from the previous chunk
+      let previousChunkLastFrame = null;
+      if (i > 0 && chunks[i-1].length > 0) {
+        const lastFrameOfPreviousChunk = chunks[i-1][chunks[i-1].length - 1].fullPath;
+        previousChunkLastFrame = await fs.promises.readFile(lastFrameOfPreviousChunk);
+      }
+      
+      // Create a promise that resolves when this worker completes
+      const task = new Promise((resolve, reject) => {
+        worker.on('message', async (message) => {
+          if (message.type === 'result') {
+            // Update progress
+            processedFrames += chunk.length;
+            const percent = Math.round((processedFrames / totalFrames) * 100);
+            event.sender.send('analysis-progress', { 
+              percent, 
+              processedFrames, 
+              totalFrames,
+              workerId: i
+            });
+            
+            resolve(message.result);
+          } else if (message.type === 'error') {
+            reject(new Error(`Worker ${i} error: ${message.error}`));
+          }
+        });
+        
+        worker.on('error', (err) => {
+          reject(new Error(`Worker ${i} error: ${err.message}`));
+        });
+        
+        // Start processing
+        worker.postMessage({
+          type: 'process',
+          frames: chunk,
+          options: {
+            comparisonMethod,
+            enableDoubleVerification,
+            startIndex
+          },
+          previousChunkLastFrame
+        });
+      });
+      
+      tasks.push(task);
+    }
+    
+    // Wait for all workers to complete
+    const results = await Promise.all(tasks);
+    
+    // Close all workers
+    for (const worker of workers) {
+      worker.terminate();
+    }
+    
+    // Merge results and handle edge cases
+    return await mergeWorkerResults(event, results, slidesDir, enableDoubleVerification);
+    
+  } catch (error) {
+    console.error('Error processing frames with multiple cores:', error);
+    throw error;
+  }
+}
+
+// Original single-core method (renamed)
+async function processFramesSingleCore(event, frameFiles, slidesDir, options) {
   const { comparisonMethod, enableDoubleVerification } = options;
   
   // Track progress
@@ -671,6 +810,127 @@ async function processFrames(event, frameFiles, slidesDir, options) {
     return extractedSlides;
   } catch (error) {
     console.error('Error processing frames:', error);
+    throw error;
+  }
+}
+
+// Merge results from multiple workers
+async function mergeWorkerResults(event, workerResults, slidesDir, enableDoubleVerification) {
+  // Create a comprehensive list of all detected slides
+  let extractedSlides = [];
+  let slideIndex = 0;
+  
+  try {
+    // First pass - process potential slides from each worker
+    for (let i = 0; i < workerResults.length; i++) {
+      const result = workerResults[i];
+      const potentialSlides = result.potentialSlides || [];
+      
+      // Skip empty results
+      if (potentialSlides.length === 0) {
+        continue;
+      }
+      
+      // Always save the first slide from the first worker
+      if (i === 0) {
+        const firstSlide = potentialSlides[0];
+        slideIndex++;
+        
+        const slideNumber = String(slideIndex).padStart(3, '0');
+        const slideFilename = `slide-${slideNumber}.jpg`;
+        const slidePath = path.join(slidesDir, slideFilename);
+        
+        await fs.promises.writeFile(slidePath, firstSlide.buffer);
+        
+        extractedSlides.push({
+          index: slideIndex - 1,
+          path: slidePath,
+          filename: slideFilename
+        });
+        
+        // Notify about the extracted slide
+        event.sender.send('slide-extracted', {
+          slideNumber: slideIndex,
+          slidePath,
+          slideFilename
+        });
+        
+        // Skip processing if this is the only slide
+        if (potentialSlides.length === 1) {
+          continue;
+        }
+      }
+      
+      // Process remaining slides
+      for (let j = i === 0 ? 1 : 0; j < potentialSlides.length; j++) {
+        const slide = potentialSlides[j];
+        slideIndex++;
+        
+        const slideNumber = String(slideIndex).padStart(3, '0');
+        const slideFilename = `slide-${slideNumber}.jpg`;
+        const slidePath = path.join(slidesDir, slideFilename);
+        
+        await fs.promises.writeFile(slidePath, slide.buffer);
+        
+        extractedSlides.push({
+          index: slideIndex - 1, 
+          path: slidePath,
+          filename: slideFilename
+        });
+        
+        // Notify about the extracted slide
+        event.sender.send('slide-extracted', {
+          slideNumber: slideIndex,
+          slidePath,
+          slideFilename
+        });
+      }
+    }
+    
+    // Second pass - check boundaries between workers for missed slides
+    // Handle pending verification states that might be cut off at chunk boundaries
+    if (enableDoubleVerification) {
+      for (let i = 0; i < workerResults.length - 1; i++) {
+        const currentResult = workerResults[i];
+        const nextResult = workerResults[i + 1];
+        
+        // If the current chunk has a pending verification and the next chunk has a last frame
+        if (currentResult.pendingVerification && nextResult.lastFrame) {
+          const { buffer: potentialSlideBuffer, currentVerification } = currentResult.pendingVerification;
+          
+          // Compare with the first frame of next chunk
+          const comparisonResult = await compareImages(potentialSlideBuffer, nextResult.lastFrame);
+          
+          // If they are similar, this is potentially a slide transition at chunk boundary
+          if (!comparisonResult.changed && currentVerification >= VERIFICATION_COUNT - 1) {
+            slideIndex++;
+            
+            const slideNumber = String(slideIndex).padStart(3, '0');
+            const slideFilename = `slide-${slideNumber}.jpg`;
+            const slidePath = path.join(slidesDir, slideFilename);
+            
+            await fs.promises.writeFile(slidePath, potentialSlideBuffer);
+            
+            extractedSlides.push({
+              index: slideIndex - 1,
+              path: slidePath,
+              filename: slideFilename
+            });
+            
+            // Notify about the extracted slide
+            event.sender.send('slide-extracted', {
+              slideNumber: slideIndex,
+              slidePath,
+              slideFilename
+            });
+          }
+        }
+      }
+    }
+    
+    return extractedSlides;
+  } catch (error) {
+    console.error('Error merging worker results:', error);
     throw error;
   }
 }
