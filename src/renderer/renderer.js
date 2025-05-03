@@ -27,6 +27,13 @@ let processedFrames = 0;
 let extractedCount = 0;
 let timerInterval = null;
 
+// Progress Control Related Variables
+let currentPhase = ''; // 'extracting' or 'analyzing'
+let extractionWeight = 0.6; // The frame extraction phase accounts for 60% of the total progress.
+let analyzingWeight = 0.4; // The analysis phase accounts for 40% of the total progress.
+let extractionProgress = 0; // Frame extraction stage progress (0-100)
+let analyzingProgress = 0;  // Analysis Phase Progress (0-100)
+
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
   // Load configuration
@@ -118,17 +125,21 @@ async function startProcessing() {
     processedFrames = 0;
     extractedCount = 0;
     
+    // Reset progress variable
+    currentPhase = 'extracting';
+    extractionProgress = 0;
+    analyzingProgress = 0;
+    
     // Update UI
     btnStartProcess.disabled = true;
     btnStopProcess.disabled = false;
     btnReset.disabled = true; // Disable Reset button during processing
-    progressFill.style.width = '0%';
-    progressText.textContent = '0%';
+    updateTotalProgress(0);
     totalFrames.textContent = '0';
     extractedSlides.textContent = '0';
     processingTime.textContent = '0s';
     slidesContainer.innerHTML = '';
-    statusText.textContent = 'Extracting video frames...';
+    statusText.textContent = 'Extracting video frames... (Phase 1/2)';
     
     // Start real-time timer
     startTimer();
@@ -143,16 +154,18 @@ async function startProcessing() {
       outputDir: inputOutputDir.value,
       interval: interval,
       saveFrames: false, // Do not save intermediate frame files
-      onProgress: updateProgress // Add progress update callback
+      onProgress: updateExtractionProgress // Update to the extraction-specific progress handler
     });
     
     framesDir = result.framesDir;
     tempDir = result.tempDir; // Save the temporary directory path for subsequent cleanup
     totalFrames.textContent = result.totalFrames;
     
-    // Process the extracted frames in main process
-    statusText.textContent = 'Analyzing frames...';
+    // Update Phase
+    currentPhase = 'analyzing';
+    statusText.textContent = 'Analyzing frames... (Phase 2/2)';
     
+    // Process the extracted frames in main process
     const analysisResult = await window.electronAPI.analyzeFrames({
       framesDir,
       outputDir: inputOutputDir.value,
@@ -168,6 +181,7 @@ async function startProcessing() {
       
       // Complete processing
       stopTimer(); // Stop the timer
+      updateTotalProgress(100); // Ensure the progress bar shows 100%
       statusText.textContent = `Processing complete, extracted ${extractedCount} slides`;
     } else {
       throw new Error(analysisResult.error || 'Unknown error during analysis');
@@ -224,8 +238,12 @@ async function stopProcessing() {
 // Reset UI
 function resetUI() {
   // Reset progress bar
-  progressFill.style.width = '0%';
-  progressText.textContent = '0%';
+  updateTotalProgress(0);
+  
+  // Reset progress tracking variables
+  currentPhase = '';
+  extractionProgress = 0;
+  analyzingProgress = 0;
   
   // Reset statistics data
   totalFrames.textContent = '0';
@@ -268,25 +286,60 @@ function stopTimer() {
   }
 }
 
-// Update progress for frame extraction
-function updateProgress(progress) {
-  if (!isProcessing) return;
+// Update the overall progress, calculated based on the current stage and the progress of each respective stage
+function updateTotalProgress(percent) {
+  // If a specific percentage is provided, use it directly
+  if (percent !== undefined) {
+    progressFill.style.width = `${percent}%`;
+    progressText.textContent = `${Math.round(percent)}%`;
+    return;
+  }
   
-  const percent = progress.percent;
-  progressFill.style.width = `${percent}%`;
-  progressText.textContent = `${percent}%`;
-  statusText.textContent = `Extracting video frames... ${Math.round(progress.currentTime)}/${Math.round(progress.totalTime)}s`;
+  // Otherwise, calculate the total progress based on the current stage and weight.
+  let totalProgress = 0;
+  
+  if (currentPhase === 'extracting') {
+    // Frame extraction phase in progress
+    totalProgress = extractionProgress * extractionWeight;
+  } else if (currentPhase === 'analyzing') {
+    // Frame extraction completed, analysis phase in progress
+    totalProgress = extractionWeight * 100 + analyzingProgress * analyzingWeight;
+  }
+  
+  // Update progress bar and text
+  progressFill.style.width = `${totalProgress}%`;
+  progressText.textContent = `${Math.round(totalProgress)}%`;
 }
 
-// Update progress for frame analysis
+// Update the progress of the frame extraction stage
+function updateExtractionProgress(progress) {
+  if (!isProcessing) return;
+  
+  extractionProgress = progress.percent;
+  updateTotalProgress();
+  
+  // Update the status text at the same time, showing the current processing time position
+  statusText.textContent = `Extracting video frames... (Phase 1/2) ${Math.round(progress.currentTime)}/${Math.round(progress.totalTime)}s`;
+}
+
+// Update the progress of the analysis phase
 function updateAnalysisProgress(progress) {
   if (!isProcessing) return;
   
-  const percent = progress.percent;
-  progressFill.style.width = `${percent}%`;
-  progressText.textContent = `${percent}%`;
+  analyzingProgress = progress.percent;
+  updateTotalProgress();
+  
   processedFrames = progress.processedFrames;
-  statusText.textContent = `Analyzing frame ${progress.processedFrames}/${progress.totalFrames}`;
+  
+  // Update status text, display current analyzed frame information and working threads
+  let phaseText = `Analyzing frame ${progress.processedFrames}/${progress.totalFrames} (Phase 2/2)`;
+  
+  // If there is a worker thread ID (during multi-core processing), display the active worker thread.
+  if (progress.workerId !== undefined) {
+    phaseText += ` - Worker ${progress.workerId + 1}`;
+  }
+  
+  statusText.textContent = phaseText;
 }
 
 // Handle extracted slide notification
