@@ -163,15 +163,21 @@ async function startProcessing() {
     tempDir = result.tempDir; // Save the temporary directory path for subsequent cleanup
     totalFrames.textContent = result.totalFrames;
     
-    // Update Phase and start showing loading animation (there may be a short delay before analysis starts)
+    // Update Phase
     currentPhase = 'analyzing';
-    // To avoid the interface feeling stuck, update the UI immediately when switching phases, first showing 1% progress
-    analyzingProgress = 1;
-    updateTotalProgress();
+    
+    // Update status text
     statusText.textContent = 'Initializing analysis... (Phase 2/2)';
     
-    // Slightly delay to give the interface time to update and show the initialization state
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Calculate the starting and target progress values for a smooth transition
+    const startProgress = extractionWeight * 100; // Total progress completed in the frame extraction phase
+    const targetProgress = extractionWeight * 100 + 2 * analyzingWeight; // Initial progress of the analysis phase (2%)
+    
+    // Smooth transition animation for the startup progress bar (no need to wait for the animation to complete)
+    animateProgressTransition(startProgress, targetProgress);
+    
+    // Set the initial progress of the analysis phase
+    analyzingProgress = 2;
     
     // Process the extracted frames in main process
     const analysisResult = await window.electronAPI.analyzeFrames({
@@ -348,11 +354,6 @@ function updateAnalysisProgress(progress) {
   // Update status text, display current analyzed frame information and parallel processing information
   let phaseText = `Analyzing frame ${progress.processedFrames}/${progress.totalFrames} (Phase 2/2)`;
   
-  // Only display parallel processing information if there are multiple worker threads
-  if (totalActiveWorkers > 1) {
-    phaseText += ` - ${totalActiveWorkers} parallel workers`;
-  }
-  
   statusText.textContent = phaseText;
 }
 
@@ -388,4 +389,47 @@ function addSlidePreview(imageData, filename) {
   slideItem.appendChild(img);
   slideItem.appendChild(info);
   slidesContainer.appendChild(slideItem);
+}
+
+// Smooth Transition Animation Function - Used for smooth progress bar transition during stage switching
+function animateProgressTransition(startPercent, endPercent) {
+  // Ensure the value is within a reasonable range
+  startPercent = Math.max(0, Math.min(100, startPercent));
+  endPercent = Math.max(0, Math.min(100, endPercent));
+  
+  // If the start and end values are the same, no animation is needed.
+  if (Math.abs(startPercent - endPercent) < 0.1) return;
+  
+  const duration = 300; // Animation duration (milliseconds)
+  const startTime = performance.now();
+  
+  function animate(currentTime) {
+    const elapsedTime = currentTime - startTime;
+    
+    if (elapsedTime >= duration) {
+      // Animation ended
+      progressFill.style.width = `${endPercent}%`;
+      progressText.textContent = `${Math.round(endPercent)}%`;
+      return;
+    }
+    
+    // Calculate the current progress value
+    const progress = elapsedTime / duration;
+    const currentPercent = startPercent + (endPercent - startPercent) * easeOutCubic(progress);
+    
+    // Update DOM
+    progressFill.style.width = `${currentPercent}%`;
+    progressText.textContent = `${Math.round(currentPercent)}%`;
+    
+    // Continue animation
+    requestAnimationFrame(animate);
+  }
+  
+  // Startup Animation
+  requestAnimationFrame(animate);
+}
+
+// Smooth easing function
+function easeOutCubic(t) {
+  return 1 - Math.pow(1 - t, 3);
 }
