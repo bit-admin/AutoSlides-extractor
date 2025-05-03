@@ -1,7 +1,8 @@
 const { parentPort, workerData } = require('worker_threads');
 const fs = require('fs');
 const path = require('path');
-const sharp = require('sharp');
+// Remove Sharp dependency
+const { createImageProcessor } = require('../utils/image-processor');
 
 // Import threshold settings from parent
 const {
@@ -159,7 +160,7 @@ async function processFrameChunk(frames, options) {
   }
 }
 
-// Compare two images using Sharp - Same implementation as in main.js
+// Compare two images using native processing - Same implementation as in main.js
 async function compareImages(buffer1, buffer2, method = 'default') {
   try {
     // Add file size comparison as initial screening
@@ -231,18 +232,18 @@ async function preprocessImagesForComparison(buffer1, buffer2) {
   if (preprocessCache.has(cacheKey1)) {
     preprocessedImg1 = preprocessCache.get(cacheKey1);
   } else {
-    // Create Sharp image object
-    const img1 = sharp(buffer1);
-    const metadata1 = await img1.metadata();
+    // Create image processor
+    const imageProcessor = createImageProcessor(buffer1);
+    const metadata1 = await imageProcessor.getMetadata();
     
     // Common preprocessing for both pHash and SSIM
-    const gray1 = await img1.greyscale().raw().toBuffer();
+    const gray1 = await imageProcessor.toGrayscale();
     
     // Prepare different sizes for different algorithms
-    const standard32 = await img1.resize(32, 32, { fit: 'fill' }).greyscale().raw().toBuffer();
+    const standard32 = await imageProcessor.resize(32, 32).toGrayscale();
     
     preprocessedImg1 = {
-      img: img1,
+      img: imageProcessor,
       metadata: metadata1,
       gray: gray1, 
       standard32: standard32
@@ -262,14 +263,14 @@ async function preprocessImagesForComparison(buffer1, buffer2) {
   if (preprocessCache.has(cacheKey2)) {
     preprocessedImg2 = preprocessCache.get(cacheKey2);
   } else {
-    const img2 = sharp(buffer2);
-    const metadata2 = await img2.metadata();
+    const imageProcessor = createImageProcessor(buffer2);
+    const metadata2 = await imageProcessor.getMetadata();
     
-    const gray2 = await img2.greyscale().raw().toBuffer();
-    const standard32 = await img2.resize(32, 32, { fit: 'fill' }).greyscale().raw().toBuffer();
+    const gray2 = await imageProcessor.toGrayscale();
+    const standard32 = await imageProcessor.resize(32, 32).toGrayscale();
     
     preprocessedImg2 = {
-      img: img2,
+      img: imageProcessor,
       metadata: metadata2,
       gray: gray2,
       standard32: standard32
@@ -318,22 +319,18 @@ async function performBasicComparison(img1, img2, metadata1, metadata2, preproce
     } else {
       // Need to resize to matching dimensions
       gray1 = await img1
-        .resize(width, height, { fit: 'fill' })
-        .greyscale()
-        .blur(0.5) // Apply light Gaussian blur for noise reduction
-        .raw()
-        .toBuffer();
+        .resize(width, height)
+        .blur(0.5) // Apply light blur for noise reduction
+        .toGrayscale();
         
       gray2 = await img2
-        .resize(width, height, { fit: 'fill' })
-        .greyscale()
+        .resize(width, height)
         .blur(0.5)
-        .raw()
-        .toBuffer();
+        .toGrayscale();
     }
     
     // Compare pixels
-    const totalPixels = width * height;
+    const totalPixels = gray1.length;
     let diffCount = 0;
     
     for (let i = 0; i < totalPixels; i++) {
@@ -416,9 +413,7 @@ async function calculatePerceptualHash(img, preprocessedData) {
     // Use preprocessed 32x32 grayscale data if available
     const data = preprocessedData || await img
       .resize(32, 32, { fit: 'fill' })
-      .greyscale()
-      .raw()
-      .toBuffer();
+      .toGrayscale();
     
     // Convert raw pixel data to 2D array for DCT
     const pixels = new Array(32);
@@ -522,15 +517,11 @@ async function calculateSSIM(img1, img2, metadata1, metadata2, preprocessedData)
       // Convert to grayscale for comparison
       gray1 = await img1
         .resize(width, height)
-        .greyscale()
-        .raw()
-        .toBuffer();
+        .toGrayscale();
         
       gray2 = await img2
         .resize(width, height)
-        .greyscale()
-        .raw()
-        .toBuffer();
+        .toGrayscale();
     }
     
     // Calculate the mean
