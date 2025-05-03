@@ -55,32 +55,33 @@ This project is an independent tool derived from the [AutoSlides project](https:
 9. After extraction, view PNG slide images in the output directory and preview them at the bottom of the interface.
 10. Click "Reset" to clear the current state and preview.
 
-## Configuration
+## Configuration Instructions
 
-All configurable options in the user interface are automatically saved in a `config.json` file under the user data directory for automatic loading on next startup. Main configuration items include:
-- Output directory (`outputDir`)
-- Detection interval (`checkInterval`)
-- Comparison method (`comparisonMethod`)
-- Double verification enabled (`enableDoubleVerification`)
-- Capture strategy thresholds (e.g., `hammingThresholdUp`, `ssimThreshold`, defined in renderer.js)
+All user interface configurable options are automatically saved in the `config.json` file in the user data directory, allowing them to be automatically loaded the next time the application starts. Key configuration items include:
+- Output Directory (outputDir)
+- Check Interval (checkInterval)
+- Comparison Method (comparisonMethod)
+- Enable Double Verification (enableDoubleVerification)
+- Verification Count (verificationCount): Number of consecutive frames required for double verification.
 
-Advanced parameters and defaults can be adjusted in the source code:
-- `src/main/main.js`: Contains `defaultConfig` for basic configuration defaults.
-- `src/renderer/renderer.js`: Defines frontend logic and core image comparison algorithms, including constants like `PIXEL_DIFF_THRESHOLD`, `PIXEL_CHANGE_RATIO_THRESHOLD`, `HAMMING_THRESHOLD_UP`, `SSIM_THRESHOLD`, `SSIM_C1_FACTOR`, `SSIM_C2_FACTOR`, `VERIFICATION_COUNT`, etc.
+Lower-level parameters and default values can be adjusted in the source code:
+- `src/main/main.js`: Contains the `defaultConfig` used at application startup (defining default values for basic configuration items) and constant thresholds related to the core image comparison algorithms (e.g., `HAMMING_THRESHOLD_UP`, `SSIM_THRESHOLD`, `PIXEL_DIFF_THRESHOLD`, `PIXEL_CHANGE_RATIO_THRESHOLD`, `VERIFICATION_COUNT`, `SIZE_IDENTICAL_THRESHOLD`, `SIZE_DIFF_THRESHOLD`, etc.).
 
-## Technical Details
+## Technical Implementation
 
-- **Frontend**: Electron + HTML/CSS/JavaScript, responsive design, multi-platform support
-- **Backend**: Node.js, responsible for video decoding, frame extraction, and image processing
-- **Core Algorithms**: Uses the `fluent-ffmpeg` library to extract frames from videos at specified intervals (`checkInterval`), then compares frames in the renderer process to detect slide transitions.
+- **Frontend**: Electron + HTML/CSS/JavaScript, responsive interface design, multi-platform support.
+- **Backend**: Node.js, responsible for video decoding, frame extraction, and image processing scheduling.
+- **Core Algorithm**: The application uses the `fluent-ffmpeg` library to extract frame images from the video at specified time intervals (`checkInterval`). The task of comparing frames to detect slide transitions is now primarily performed in the **main process**, utilizing **Node.js Worker Threads for multi-core parallel processing** to accelerate the analysis.
     - **Frame Comparison Strategies**:
-        - **Basic Mode (`basic`)**: Calculates the absolute pixel difference between two frames. If the number of pixels exceeding the `PIXEL_DIFF_THRESHOLD` (default 30) accounts for more than `PIXEL_CHANGE_RATIO_THRESHOLD` (default 0.005) of total pixels, a significant change is detected. This method is fast but sensitive to noise and minor changes.
-        - **Default Mode (`default`)**: Combines perceptual hash (pHash) and structural similarity index (SSIM) for robust detection.
-            - **Perceptual Hash (pHash)**: Converts the image to grayscale, resizes it, performs DCT, computes the median of DCT coefficients, and generates a binary hash. The Hamming distance between two pHash fingerprints is calculated; if the distance is less than or equal to `HAMMING_THRESHOLD_UP` (default 5), the content is considered similar. pHash is robust to scaling, slight blurring, and brightness changes.
-            - **Structural Similarity (SSIM)**: Compares two images in terms of luminance, contrast, and structure. SSIM values range from -1 to 1, with values closer to 1 indicating higher similarity. If SSIM is greater than or equal to `SSIM_THRESHOLD` (default 0.999), the frames are considered structurally similar. SSIM aligns better with human visual perception.
-            - **Decision Logic**: In default mode, a potential slide transition is detected only if the pHash Hamming distance is *greater than* the threshold **or** the SSIM value is *less than* the threshold.
-    - **Double Verification (`enableDoubleVerification`)**: To reduce false positives caused by brief occlusions (e.g., mouse pointer, notifications), enabling this option caches the current frame when a potential transition is detected. Only if the next `VERIFICATION_COUNT` (default 2) consecutive frames remain highly similar to the cached frame (i.e., neither pHash nor SSIM triggers a transition) is the cached frame confirmed as a new slide.
-- **Configuration Management**: User settings are saved automatically, supporting personalized parameter adjustments.
+        - **File Size Quick Comparison**: Before performing complex image comparisons, the file sizes of the two frames are compared. If the size difference is minimal (below `SIZE_IDENTICAL_THRESHOLD`), they are considered identical; if the difference is significant (above `SIZE_DIFF_THRESHOLD`), they might be different. This quickly eliminates some obviously identical or different frames.
+        - **Basic Mode (`basic`)**: Calculates the absolute difference in pixel values between two frames. If the number of pixels with a difference exceeding `PIXEL_DIFF_THRESHOLD` (default 30) constitutes a proportion greater than `PIXEL_CHANGE_RATIO_THRESHOLD` (default 0.005) of the total pixels, a significant change is considered to have occurred. This method is computationally simple and fast but is sensitive to video noise and minor variations.
+        - **Default Mode (`default`)**: Combines Perceptual Hashing (pHash) and Structural Similarity Index (SSIM) for more robust detection.
+            - **Perceptual Hash (pHash)**: Converts the image to grayscale, scales it down, performs a Discrete Cosine Transform (DCT), calculates the median of the DCT coefficients, and generates a binary hash fingerprint. By calculating the Hamming Distance between the pHash fingerprints of two frames, if the distance is less than or equal to `HAMMING_THRESHOLD_UP` (default 5), the content is considered similar. pHash is robust against scaling, slight blurring, brightness adjustments, etc.
+            - **Structural Similarity (SSIM)**: Compares the similarity of two images based on luminance, contrast, and structure. The calculated SSIM value ranges from -1 to 1, with values closer to 1 indicating higher similarity. When the SSIM value is greater than or equal to `SSIM_THRESHOLD` (default 0.999), the two frames are considered highly similar structurally. SSIM aligns better with human perception of image quality.
+            - **Decision Logic**: In the default mode, a potential slide transition is initially identified only if the pHash Hamming distance is *greater* than the threshold **or** the SSIM value is *less* than the threshold.
+    - **Double Verification (`enableDoubleVerification`)**: To reduce false positives caused by transient obstructions (like mouse pointers or temporary notifications), enabling this option caches the current frame when a potential transition is detected. Only if the subsequent `VERIFICATION_COUNT` (default 2) consecutive frames maintain sufficient similarity with the cached frame (i.e., neither pHash nor SSIM triggers the transition condition again) is the cached frame finally confirmed as a new slide.
+- **Configuration Management**: User settings are automatically saved, supporting personalized parameter adjustments.
+- **Performance Considerations**: Slide extraction (especially the frame image comparison analysis phase) is a **CPU-intensive** task. Processing speed largely depends on your computer's CPU performance. The application implements **multi-core processing** support (enabled by default, can be disabled via `ENABLE_MULTI_CORE` in `main.js`), attempting to utilize multiple CPU cores to accelerate the analysis process, which is particularly effective when processing a large number of frames.
 
 ## FAQ
 
