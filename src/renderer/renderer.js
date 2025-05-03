@@ -29,10 +29,11 @@ let timerInterval = null;
 
 // Progress Control Related Variables
 let currentPhase = ''; // 'extracting' or 'analyzing'
-let extractionWeight = 0.6; // The frame extraction phase accounts for 60% of the total progress.
-let analyzingWeight = 0.4; // The analysis phase accounts for 40% of the total progress.
+let extractionWeight = 0.7; // The frame extraction phase accounts for 70% of the total progress.
+let analyzingWeight = 0.3; // The analysis phase accounts for 30% of the total progress.
 let extractionProgress = 0; // Frame extraction stage progress (0-100)
 let analyzingProgress = 0;  // Analysis Phase Progress (0-100)
+let totalActiveWorkers = 0; // Total number of active worker threads
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -129,6 +130,7 @@ async function startProcessing() {
     currentPhase = 'extracting';
     extractionProgress = 0;
     analyzingProgress = 0;
+    totalActiveWorkers = 0;
     
     // Update UI
     btnStartProcess.disabled = true;
@@ -161,9 +163,15 @@ async function startProcessing() {
     tempDir = result.tempDir; // Save the temporary directory path for subsequent cleanup
     totalFrames.textContent = result.totalFrames;
     
-    // Update Phase
+    // Update Phase and start showing loading animation (there may be a short delay before analysis starts)
     currentPhase = 'analyzing';
-    statusText.textContent = 'Analyzing frames... (Phase 2/2)';
+    // To avoid the interface feeling stuck, update the UI immediately when switching phases, first showing 1% progress
+    analyzingProgress = 1;
+    updateTotalProgress();
+    statusText.textContent = 'Initializing analysis... (Phase 2/2)';
+    
+    // Slightly delay to give the interface time to update and show the initialization state
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     // Process the extracted frames in main process
     const analysisResult = await window.electronAPI.analyzeFrames({
@@ -331,12 +339,18 @@ function updateAnalysisProgress(progress) {
   
   processedFrames = progress.processedFrames;
   
-  // Update status text, display current analyzed frame information and working threads
+  // Record the current number of active worker threads
+  if (progress.workerId !== undefined) {
+    // Update active worker thread count
+    totalActiveWorkers = Math.max(totalActiveWorkers, progress.workerId + 1);
+  }
+  
+  // Update status text, display current analyzed frame information and parallel processing information
   let phaseText = `Analyzing frame ${progress.processedFrames}/${progress.totalFrames} (Phase 2/2)`;
   
-  // If there is a worker thread ID (during multi-core processing), display the active worker thread.
-  if (progress.workerId !== undefined) {
-    phaseText += ` - Worker ${progress.workerId + 1}`;
+  // Only display parallel processing information if there are multiple worker threads
+  if (totalActiveWorkers > 1) {
+    phaseText += ` - ${totalActiveWorkers} parallel workers`;
   }
   
   statusText.textContent = phaseText;
