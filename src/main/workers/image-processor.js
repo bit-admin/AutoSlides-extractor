@@ -17,6 +17,9 @@ const {
   SIZE_DIFF_THRESHOLD
 } = workerData.constants;
 
+// Cache for preprocessed images to avoid redundant calculations
+const preprocessCache = new Map();
+
 // Process a chunk of frame files
 async function processFrameChunk(frames, options) {
   const { comparisonMethod, enableDoubleVerification, startIndex } = options;
@@ -193,21 +196,16 @@ async function compareImages(buffer1, buffer2, method = 'default') {
     }
     
     // The file sizes are similar, conducting a more detailed image analysis.
-    // Convert buffers to Sharp image objects
-    const img1 = sharp(buffer1);
-    const img2 = sharp(buffer2);
-    
-    // Get metadata for both images
-    const metadata1 = await img1.metadata();
-    const metadata2 = await img2.metadata();
+    // Preprocess images only once for both comparison methods
+    const { img1, img2, metadata1, metadata2, preprocessedData } = await preprocessImagesForComparison(buffer1, buffer2);
     
     // Use different comparison strategies
     switch (method) {
       case 'basic':
-        return await performBasicComparison(img1, img2, metadata1, metadata2);
+        return await performBasicComparison(img1, img2, metadata1, metadata2, preprocessedData);
       case 'default':
       default:
-        return await performPerceptualComparison(img1, img2, metadata1, metadata2);
+        return await performPerceptualComparison(img1, img2, metadata1, metadata2, preprocessedData);
     }
   } catch (error) {
     console.error('Image comparison error:', error);
@@ -221,27 +219,118 @@ async function compareImages(buffer1, buffer2, method = 'default') {
   }
 }
 
+// Preprocess images for comparison to avoid redundant operations
+async function preprocessImagesForComparison(buffer1, buffer2) {
+  // Generate cache keys based on buffer content hashes
+  const cacheKey1 = Buffer.from(buffer1).toString('base64').substring(0, 20);
+  const cacheKey2 = Buffer.from(buffer2).toString('base64').substring(0, 20);
+  
+  let preprocessedImg1, preprocessedImg2;
+  
+  // Try to get preprocessed images from cache
+  if (preprocessCache.has(cacheKey1)) {
+    preprocessedImg1 = preprocessCache.get(cacheKey1);
+  } else {
+    // Create Sharp image object
+    const img1 = sharp(buffer1);
+    const metadata1 = await img1.metadata();
+    
+    // Common preprocessing for both pHash and SSIM
+    const gray1 = await img1.greyscale().raw().toBuffer();
+    
+    // Prepare different sizes for different algorithms
+    const standard32 = await img1.resize(32, 32, { fit: 'fill' }).greyscale().raw().toBuffer();
+    
+    preprocessedImg1 = {
+      img: img1,
+      metadata: metadata1,
+      gray: gray1, 
+      standard32: standard32
+    };
+    
+    // Store in cache (limit cache size)
+    if (preprocessCache.size > 20) {
+      // Remove oldest entry when cache gets too large
+      const firstKey = preprocessCache.keys().next().value;
+      preprocessCache.delete(firstKey);
+    }
+    
+    preprocessCache.set(cacheKey1, preprocessedImg1);
+  }
+  
+  // Same process for the second image
+  if (preprocessCache.has(cacheKey2)) {
+    preprocessedImg2 = preprocessCache.get(cacheKey2);
+  } else {
+    const img2 = sharp(buffer2);
+    const metadata2 = await img2.metadata();
+    
+    const gray2 = await img2.greyscale().raw().toBuffer();
+    const standard32 = await img2.resize(32, 32, { fit: 'fill' }).greyscale().raw().toBuffer();
+    
+    preprocessedImg2 = {
+      img: img2,
+      metadata: metadata2,
+      gray: gray2,
+      standard32: standard32
+    };
+    
+    if (preprocessCache.size > 20) {
+      const firstKey = preprocessCache.keys().next().value;
+      preprocessCache.delete(firstKey);
+    }
+    
+    preprocessCache.set(cacheKey2, preprocessedImg2);
+  }
+  
+  // Return all preprocessed data
+  return {
+    img1: preprocessedImg1.img,
+    img2: preprocessedImg2.img,
+    metadata1: preprocessedImg1.metadata,
+    metadata2: preprocessedImg2.metadata,
+    preprocessedData: {
+      gray1: preprocessedImg1.gray,
+      gray2: preprocessedImg2.gray,
+      standard32_1: preprocessedImg1.standard32,
+      standard32_2: preprocessedImg2.standard32
+    }
+  };
+}
+
 // Basic comparison using pixel difference
-async function performBasicComparison(img1, img2, metadata1, metadata2) {
+async function performBasicComparison(img1, img2, metadata1, metadata2, preprocessedData) {
   try {
     // Ensure both images are the same size for comparison
     const width = Math.min(metadata1.width, metadata2.width);
     const height = Math.min(metadata1.height, metadata2.height);
     
-    // Convert to grayscale and resize for comparison
-    const gray1 = await img1
-      .resize(width, height, { fit: 'fill' })
-      .greyscale()
-      .blur(0.5) // Apply light Gaussian blur for noise reduction
-      .raw()
-      .toBuffer();
-      
-    const gray2 = await img2
-      .resize(width, height, { fit: 'fill' })
-      .greyscale()
-      .blur(0.5)
-      .raw()
-      .toBuffer();
+    // Use preprocessed grayscale images if they match our size requirements,
+    // otherwise create new ones at the required size
+    let gray1, gray2;
+    
+    // Check if we need to resize the preprocessed images
+    if (metadata1.width === width && metadata1.height === height && 
+        metadata2.width === width && metadata2.height === height) {
+      // Can use preprocessed grayscale directly
+      gray1 = preprocessedData.gray1;
+      gray2 = preprocessedData.gray2;
+    } else {
+      // Need to resize to matching dimensions
+      gray1 = await img1
+        .resize(width, height, { fit: 'fill' })
+        .greyscale()
+        .blur(0.5) // Apply light Gaussian blur for noise reduction
+        .raw()
+        .toBuffer();
+        
+      gray2 = await img2
+        .resize(width, height, { fit: 'fill' })
+        .greyscale()
+        .blur(0.5)
+        .raw()
+        .toBuffer();
+    }
     
     // Compare pixels
     const totalPixels = width * height;
@@ -270,11 +359,11 @@ async function performBasicComparison(img1, img2, metadata1, metadata2) {
 }
 
 // Perceptual comparison using pHash and SSIM
-async function performPerceptualComparison(img1, img2, metadata1, metadata2) {
+async function performPerceptualComparison(img1, img2, metadata1, metadata2, preprocessedData) {
   try {
-    // Calculate perceptual hash
-    const hash1 = await calculatePerceptualHash(img1);
-    const hash2 = await calculatePerceptualHash(img2);
+    // Calculate perceptual hash using preprocessed data
+    const hash1 = await calculatePerceptualHash(img1, preprocessedData.standard32_1);
+    const hash2 = await calculatePerceptualHash(img2, preprocessedData.standard32_2);
     
     // Calculate Hamming distance
     const hammingDistance = calculateHammingDistance(hash1, hash2);
@@ -301,7 +390,7 @@ async function performPerceptualComparison(img1, img2, metadata1, metadata2) {
       };
     } else {
       // Boundary conditions, using SSIM-like analysis
-      const ssim = await calculateSSIM(img1, img2);
+      const ssim = await calculateSSIM(img1, img2, metadata1, metadata2, preprocessedData);
       
       if (DEBUG_MODE) {
         console.log(`SSIM similarity: ${ssim.toFixed(6)}`);
@@ -317,19 +406,19 @@ async function performPerceptualComparison(img1, img2, metadata1, metadata2) {
   } catch (error) {
     console.error('Perceptual comparison error:', error);
     // Fall back to basic method
-    return performBasicComparison(img1, img2, metadata1, metadata2);
+    return performBasicComparison(img1, img2, metadata1, metadata2, preprocessedData);
   }
 }
 
 // Calculate perceptual hash
-async function calculatePerceptualHash(img) {
+async function calculatePerceptualHash(img, preprocessedData) {
   try {
-    // Resize to 32x32 and convert to grayscale for DCT
-    const { data, info } = await img
+    // Use preprocessed 32x32 grayscale data if available
+    const data = preprocessedData || await img
       .resize(32, 32, { fit: 'fill' })
       .greyscale()
       .raw()
-      .toBuffer({ resolveWithObject: true });
+      .toBuffer();
     
     // Convert raw pixel data to 2D array for DCT
     const pixels = new Array(32);
@@ -418,25 +507,31 @@ function calculateHammingDistance(hash1, hash2) {
 }
 
 // Calculate SSIM-like metric
-async function calculateSSIM(img1, img2) {
+async function calculateSSIM(img1, img2, metadata1, metadata2, preprocessedData) {
   try {
-    // Resize images to the same dimensions
-    const metadata1 = await img1.metadata();
+    // Use preprocessed images if available and appropriate size
     const width = metadata1.width;
     const height = metadata1.height;
     
-    // Convert to grayscale for comparison
-    const gray1 = await img1
-      .resize(width, height)
-      .greyscale()
-      .raw()
-      .toBuffer();
-      
-    const gray2 = await img2
-      .resize(width, height)
-      .greyscale()
-      .raw()
-      .toBuffer();
+    // Check if we already have grayscale images of the right size in preprocessedData
+    let gray1, gray2;
+    if (preprocessedData && width === metadata1.width && height === metadata1.height) {
+      gray1 = preprocessedData.gray1;
+      gray2 = preprocessedData.gray2;
+    } else {
+      // Convert to grayscale for comparison
+      gray1 = await img1
+        .resize(width, height)
+        .greyscale()
+        .raw()
+        .toBuffer();
+        
+      gray2 = await img2
+        .resize(width, height)
+        .greyscale()
+        .raw()
+        .toBuffer();
+    }
     
     // Calculate the mean
     let mean1 = 0, mean2 = 0;
