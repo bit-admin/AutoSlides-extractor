@@ -64,18 +64,18 @@ AutoSlides Extractor 是一款基于 Electron 和 Node.js 的跨平台桌面应�
 - 检测间隔（checkInterval）
 - 对比方法（comparisonMethod）
 - 是否启用二次验证（enableDoubleVerification）
-- 捕获策略相关阈值（如 hammingThresholdUp、ssimThreshold 等，定义于 renderer.js）
+- 二次验证所需连续帧数（verificationCount）
 
 更底层参数及默认值可在源码中调整：
-- `src/main/main.js`：包含应用启动时的 `defaultConfig`，定义基础配置项的默认值。
-- `src/renderer/renderer.js`：定义前端交互逻辑，并包含核心图像对比算法的实现及相关常量阈值（如 `PIXEL_DIFF_THRESHOLD`, `PIXEL_CHANGE_RATIO_THRESHOLD`, `HAMMING_THRESHOLD_UP`, `SSIM_THRESHOLD`, `SSIM_C1_FACTOR`, `SSIM_C2_FACTOR`, `VERIFICATION_COUNT` 等）。
+- `src/main/main.js`：包含应用启动时的 `defaultConfig`（定义基础配置项的默认值）以及核心图像对比算法相关的常量阈值（如 `HAMMING_THRESHOLD_UP`, `SSIM_THRESHOLD`, `PIXEL_DIFF_THRESHOLD`, `PIXEL_CHANGE_RATIO_THRESHOLD`, `VERIFICATION_COUNT`, `SIZE_IDENTICAL_THRESHOLD`, `SIZE_DIFF_THRESHOLD` 等）。
 
 ## 技术实现
 
 - **前端**：Electron + HTML/CSS/JavaScript，界面响应式设计，支持多平台
-- **后端**：Node.js，负责视频解码、帧提取与图像处理
-- **核心算法**：应用通过 `fluent-ffmpeg` 库按指定时间间隔（`checkInterval`）从视频中提取帧图像，然后在渲染进程中进行帧间对比以检测幻灯片切换。
+- **后端**：Node.js，负责视频解码、帧提取与图像处理调度
+- **核心算法**：应用通过 `fluent-ffmpeg` 库按指定时间间隔（`checkInterval`）从视频中提取帧图像。帧间对比以检测幻灯片切换的任务主要在 **主进程** 中完成，并利用 **Node.js Worker Threads 实现多核并行处理**，以加速分析过程。
     - **帧间对比策略**：
+        - **文件大小快速比较**：在进行复杂的图像比较前，会先比较两帧的文件大小。如果大小差异极小（低于 `SIZE_IDENTICAL_THRESHOLD`），则认为它们相同；如果差异显著（大于 `SIZE_DIFF_THRESHOLD`），则可能不同。这可以快速排除掉一些明显相同或不同的帧。
         - **基础模式 (`basic`)**：计算两帧之间像素值的绝对差。如果差异超过 `PIXEL_DIFF_THRESHOLD` (默认 30) 的像素数量占总像素的比例超过 `PIXEL_CHANGE_RATIO_THRESHOLD` (默认 0.005)，则认为发生了显著变化。此方法计算简单快速，但对视频噪声和细微变化较敏感。
         - **默认模式 (`default`)**：结合使用感知哈希（pHash）和结构相似性指数（SSIM）进行更鲁棒的检测。
             - **感知哈希 (pHash)**：将图像转换为灰度图，缩放至小尺寸，进行离散余弦变换（DCT），计算DCT系数的中位数，生成二进制哈希指纹。通过计算两帧pHash指纹的汉明距离（Hamming Distance），若距离小于等于 `HAMMING_THRESHOLD_UP` (默认 5)，则认为内容相似。pHash对图像的缩放、轻微模糊、亮度调整等具有较好的鲁棒性。
@@ -83,6 +83,7 @@ AutoSlides Extractor 是一款基于 Electron 和 Node.js 的跨平台桌面应�
             - **决策逻辑**：在默认模式下，只有当 pHash 汉明距离 *大于* 阈值 **或** SSIM 值 *小于* 阈值时，才初步判断为潜在的幻灯片切换。
     - **二次验证 (`enableDoubleVerification`)**：为减少因短暂遮挡（如鼠标指针、临时通知）导致的误判，启用此选项后，当检测到潜在切换时，系统会缓存当前帧。只有当后续连续 `VERIFICATION_COUNT` (默认 2) 帧与该缓存帧保持足够高的相似度（即 pHash 和 SSIM 均未再次触发切换条件）时，才最终确认该缓存帧为新的幻灯片。
 - **配置管理**：自动保存用户设置，支持个性化参数调整
+- **性能考量**：幻灯片提取（特别是帧图像对比分析阶段）是 **CPU 密集型** 任务。处理速度很大程度上取决于您计算机的 CPU 性能。应用已实现 **多核处理** 支持（默认启用，可在 `main.js` 中通过 `ENABLE_MULTI_CORE` 关闭），会尝试利用多个 CPU 核心来加速分析过程，尤其是在处理大量帧时效果更明显。
 
 ## 常见问题 FAQ
 
