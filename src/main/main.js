@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
@@ -144,11 +144,60 @@ function createWindow() {
   });
 }
 
+function createApplicationMenu() {
+  const template = [
+    {
+      label: app.name,
+      submenu: [
+        process.platform === 'darwin' 
+          ? { role: 'about', label: 'About ' + app.name } 
+          : { label: 'About', click: () => app.showAboutPanel() },
+        { type: 'separator' },
+        // macOS-specific project with conditional judgment
+        ...(process.platform === 'darwin' ? [
+          { type: 'separator' },
+          { role: 'services' },
+          { type: 'separator' },
+          { role: 'hide' },
+          { role: 'hideOthers' },
+          { role: 'unhide' },
+        ] : []),
+        { type: 'separator' },
+        { role: 'quit', label: 'Quit' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload', label: 'Reload' },
+        { role: 'forceReload', label: 'Force Reload' },
+        { role: 'toggleDevTools', label: 'Toggle Developer Tools' }
+      ]
+    },
+    {
+      role: 'help',
+      label: 'Help',
+      submenu: [
+        {
+          label: 'Visit GitHub Repository',
+          click: async () => {
+            await shell.openExternal('https://github.com/bit-admin/AutoSlides-extractor');
+          }
+        }
+      ]
+    }
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
+
 // This method is called when Electron has finished initializing and is ready to create browser windows.
 app.whenReady().then(() => {
   const config = loadConfig();
   
   createWindow();
+  createApplicationMenu();
   ensureDirectoryExists(config.outputDir);
 
   app.on('activate', function () {
