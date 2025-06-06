@@ -1,6 +1,6 @@
 # AutoSlides Extractor
 
-AutoSlides Extractor is a cross-platform desktop application based on Electron and Node.js, designed to efficiently and accurately extract slide pages from various video files. It is ideal for scenarios such as online course recordings, meeting notes, academic lectures, and more, helping users quickly obtain key slide content from videos and greatly improving the efficiency of data organization and knowledge archiving.
+AutoSlides Extractor is a cross-platform desktop application built with Tauri and Rust, designed to efficiently and accurately extract slide pages from various video files. It is ideal for scenarios such as online course recordings, meeting notes, academic lectures, and more, helping users quickly obtain key slide content from videos and greatly improving the efficiency of data organization and knowledge archiving.
 
 ## Project Overview
 
@@ -69,8 +69,8 @@ Lower-level parameters and default values can be adjusted in the source code:
 
 ## Technical Implementation
 
-- **Frontend**: Electron + HTML/CSS/JavaScript, responsive interface design, multi-platform support.
-- **Backend**: Node.js, responsible for video decoding, frame extraction, and image processing scheduling.
+- **Frontend**: Tauri + HTML/CSS/JavaScript, responsive interface design, multi-platform support.
+- **Backend**: Rust, responsible for video decoding, frame extraction, and image processing scheduling.
 - **Core Algorithm**: The application uses the `fluent-ffmpeg` library to extract frame images from the video at specified time intervals (`checkInterval`). The task of comparing frames to detect slide transitions is now primarily performed in the **main process**, utilizing **Node.js Worker Threads for multi-core parallel processing** to accelerate the analysis.
     - **Frame Comparison Strategies**:
         - **File Size Quick Comparison**: Before performing complex image comparisons, the file sizes of the two frames are compared. If the size difference is minimal (below `SIZE_IDENTICAL_THRESHOLD`), they are considered identical; if the difference is significant (above `SIZE_DIFF_THRESHOLD`), they might be different. This quickly eliminates some obviously identical or different frames.

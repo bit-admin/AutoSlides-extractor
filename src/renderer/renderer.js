@@ -18,6 +18,26 @@ const slidesContainer = document.getElementById('slidesContainer');
 const comparisonMethod = document.getElementById('comparisonMethod');
 const enableDoubleVerification = document.getElementById('enableDoubleVerification');
 
+// Map existing Electron API calls to Tauri's invoke commands
+const { invoke } = window.__TAURI__.tauri;
+
+window.electronAPI = {
+  getConfig: () => invoke('get_config'),
+  saveConfig: (config) => invoke('save_config', { config }),
+  selectOutputDir: () => invoke('select_output_dir'),
+  selectVideoFile: () => invoke('select_video_file'),
+  getVideoInfo: (videoPath) => invoke('get_video_info', { videoPath }),
+  extractFrames: (options) => invoke('extract_frames', options),
+  cancelExtraction: () => invoke('cancel_extraction'),
+  saveSlide: (options) => invoke('save_slide', options),
+  listFrameFiles: (dirPath) => invoke('list_frame_files', { dirPath }),
+  readFrameImage: (filePath) => invoke('read_frame_image', { filePath }),
+  createSlidesDir: (baseDir) => invoke('create_slides_dir', { baseDir }),
+  cleanupTempDir: (tempDir) => invoke('cleanup_temp_dir', { tempDir }),
+  analyzeFrames: (options) => invoke('analyze_frames', options),
+  removeAllListeners: () => {}
+};
+
 // Global variable
 let selectedVideoPath = '';
 let framesDir = '';

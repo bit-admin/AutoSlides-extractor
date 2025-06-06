@@ -2,7 +2,7 @@
 
 [**English Version**](README_EN.md) 👈 Click here for English
 
-AutoSlides Extractor 是一款基于 Electron 和 Node.js 的跨平台桌面应用，能够自动从各类视频文件中高效、精准地提取幻灯片页面。适用于在线课程录播、会议记录、学术讲座等场景，帮助用户快速获取视频中的关键幻灯片内容，极大提升资料整理与知识归档效率。
+AutoSlides Extractor 是一款基于 Tauri 和 Rust 的跨平台桌面应用，能够自动从各类视频文件中高效、精准地提取幻灯片页面。适用于在线课程录播、会议记录、学术讲座等场景，帮助用户快速获取视频中的关键幻灯片内容，极大提升资料整理与知识归档效率。
 
 ## 项目简介
 
@@ -71,8 +71,8 @@ AutoSlides Extractor 是一款基于 Electron 和 Node.js 的跨平台桌面应�
 
 ## 技术实现
 
-- **前端**：Electron + HTML/CSS/JavaScript，界面响应式设计，支持多平台
-- **后端**：Node.js，负责视频解码、帧提取与图像处理调度
+- **前端**：Tauri + HTML/CSS/JavaScript，界面响应式设计，支持多平台
+- **后端**：Rust，负责视频解码、帧提取与图像处理调度
 - **核心算法**：应用通过 `fluent-ffmpeg` 库按指定时间间隔（`checkInterval`）从视频中提取帧图像。帧间对比以检测幻灯片切换的任务主要在 **主进程** 中完成，并利用 **Node.js Worker Threads 实现多核并行处理**，以加速分析过程。
     - **帧间对比策略**：
         - **文件大小快速比较**：在进行复杂的图像比较前，会先比较两帧的文件大小。如果大小差异极小（低于 `SIZE_IDENTICAL_THRESHOLD`），则认为它们相同；如果差异显著（大于 `SIZE_DIFF_THRESHOLD`），则可能不同。这可以快速排除掉一些明显相同或不同的帧。
