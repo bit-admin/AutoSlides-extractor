@@ -169,15 +169,9 @@ async function startProcessing() {
     // Update status text
     statusText.textContent = 'Initializing analysis... (Phase 2/2)';
     
-    // Calculate the starting and target progress values for a smooth transition
-    const startProgress = extractionWeight * 100; // Total progress completed in the frame extraction phase
-    const targetProgress = extractionWeight * 100 + 2 * analyzingWeight; // Initial progress of the analysis phase (2%)
-    
-    // Smooth transition animation for the startup progress bar (no need to wait for the animation to complete)
-    animateProgressTransition(startProgress, targetProgress);
-    
-    // Set the initial progress of the analysis phase
-    analyzingProgress = 2;
+    // Reset analyzing progress and update immediately
+    analyzingProgress = 0;
+    updateTotalProgress();
     
     // Process the extracted frames in main process
     const analysisResult = await window.electronAPI.analyzeFrames({
@@ -193,9 +187,16 @@ async function startProcessing() {
       extractedCount = analysisResult.extractedCount;
       extractedSlides.textContent = extractedCount;
       
-      // Complete processing
+      // Complete processing - ensure progress reaches 100%
+      analyzingProgress = 100;
+      updateTotalProgress();
+      
+      // Also directly set to 100% to be absolutely sure
+      setTimeout(() => {
+        updateTotalProgress(100);
+      }, 50);
+      
       stopTimer(); // Stop the timer
-      updateTotalProgress(100); // Ensure the progress bar shows 100%
       statusText.textContent = `Processing complete, extracted ${extractedCount} slides`;
     } else {
       throw new Error(analysisResult.error || 'Unknown error during analysis');
@@ -319,6 +320,9 @@ function updateTotalProgress(percent) {
     // Frame extraction completed, analysis phase in progress
     totalProgress = extractionWeight * 100 + analyzingProgress * analyzingWeight;
   }
+  
+  // Ensure progress doesn't exceed 100%
+  totalProgress = Math.min(totalProgress, 100);
   
   // Update progress bar and text
   progressFill.style.width = `${totalProgress}%`;

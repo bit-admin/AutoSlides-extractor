@@ -147,36 +147,50 @@ function createWindow() {
 function createApplicationMenu() {
   const template = [
     {
-      label: app.name,
+      label: app.getName(),
       submenu: [
         process.platform === 'darwin' 
-          ? { role: 'about', label: 'About ' + app.name } 
-          : { label: 'About', click: () => app.showAboutPanel() },
+          ? { role: 'about' } 
+          : { 
+              label: 'About', 
+              click: () => {
+                dialog.showMessageBox(mainWindow, {
+                  type: 'info',
+                  title: 'About',
+                  message: app.getName(),
+                  detail: `Version: ${app.getVersion()}\nElectron: ${process.versions.electron}\nNode: ${process.versions.node}`
+                });
+              }
+            },
         { type: 'separator' },
-        // macOS-specific project with conditional judgment
+        // macOS-specific items
         ...(process.platform === 'darwin' ? [
-          { type: 'separator' },
           { role: 'services' },
           { type: 'separator' },
           { role: 'hide' },
-          { role: 'hideOthers' },
+          { role: 'hideothers' },
           { role: 'unhide' },
+          { type: 'separator' }
         ] : []),
-        { type: 'separator' },
-        { role: 'quit', label: 'Quit' }
+        { role: 'quit' }
       ]
     },
     {
       label: 'View',
       submenu: [
-        { role: 'reload', label: 'Reload' },
-        { role: 'forceReload', label: 'Force Reload' },
-        { role: 'toggleDevTools', label: 'Toggle Developer Tools' }
+        { role: 'reload' },
+        { role: 'forcereload' },
+        { role: 'toggledevtools' },
+        { type: 'separator' },
+        { role: 'resetzoom' },
+        { role: 'zoomin' },
+        { role: 'zoomout' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
       ]
     },
     {
       role: 'help',
-      label: 'Help',
       submenu: [
         {
           label: 'Visit GitHub Repository',
