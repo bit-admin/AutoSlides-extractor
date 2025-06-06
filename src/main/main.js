@@ -253,10 +253,10 @@ ipcMain.handle('select-output-dir', async () => {
   return null;
 });
 
-// Select video file
+// Select video file (supports multiple selection)
 ipcMain.handle('select-video-file', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openFile'],
+    properties: ['openFile', 'multiSelections'],
     filters: [
       { name: 'Video Files', extensions: ['mp4', 'avi', 'mkv', 'mov', 'webm'] }
     ]
@@ -265,7 +265,7 @@ ipcMain.handle('select-video-file', async () => {
   if (!result.canceled && result.filePaths.length > 0) {
     // Store the selected video path in a global variable for use by createSlidesDir
     global.selectedVideoPath = result.filePaths[0];
-    return result.filePaths[0];
+    return result.filePaths;
   }
   return null;
 });

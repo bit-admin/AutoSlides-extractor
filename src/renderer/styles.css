@@ -552,3 +552,94 @@ footer {
     background-color: #2d3748;
   }
 }
+
+/* Queue styles */
+.queue-controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.queue-list {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: #f8fafc;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.queue-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background-color: white;
+}
+
+.queue-item:last-child {
+  border-bottom: none;
+}
+
+.queue-item.processing {
+  background-color: #ebf8ff;
+  border-left: 4px solid #3182ce;
+}
+
+.queue-item.completed {
+  background-color: #f0fff4;
+  border-left: 4px solid #38a169;
+}
+
+.queue-item.error {
+  background-color: #fed7d7;
+  border-left: 4px solid #e53e3e;
+}
+
+.queue-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.queue-item-name {
+  font-weight: 500;
+  color: #2d3748;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.queue-item-status {
+  font-size: 12px;
+  color: #718096;
+}
+
+.queue-item-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.queue-remove-btn {
+  background: none;
+  border: none;
+  color: #e53e3e;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.queue-remove-btn:hover {
+  background-color: #fed7d7;
+}
+
+.queue-empty {
+  padding: 20px;
+  text-align: center;
+  color: #718096;
+  font-style: italic;
+}

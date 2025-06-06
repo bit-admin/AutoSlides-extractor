@@ -20,6 +20,18 @@
           </div>
         </div>
         
+        <!-- Queue section (initially hidden) -->
+        <div class="form-group" id="queueSection" style="display: none;">
+          <label>Video Queue</label>
+          <div class="queue-controls">
+            <button id="btnStartQueue" class="primary-button">Start Queue</button>
+            <button id="btnClearQueue" class="secondary-button">Clear Queue</button>
+          </div>
+          <div id="queueList" class="queue-list">
+            <!-- Queue items will be dynamically added here -->
+          </div>
+        </div>
+        
         <div class="form-group">
           <label for="inputOutputDir">Output Directory</label>
           <div class="input-with-button">

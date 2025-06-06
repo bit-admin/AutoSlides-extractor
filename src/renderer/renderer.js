@@ -18,8 +18,17 @@ const slidesContainer = document.getElementById('slidesContainer');
 const comparisonMethod = document.getElementById('comparisonMethod');
 const enableDoubleVerification = document.getElementById('enableDoubleVerification');
 
+// Queue elements
+const queueSection = document.getElementById('queueSection');
+const btnStartQueue = document.getElementById('btnStartQueue');
+const btnClearQueue = document.getElementById('btnClearQueue');
+const queueList = document.getElementById('queueList');
+
 // Global variable
 let selectedVideoPath = '';
+let videoQueue = []; // Video queue
+let isQueueProcessing = false; // Queue processing status
+let currentQueueIndex = 0; // Current processing index in queue
 let framesDir = '';
 let isProcessing = false;
 let processStartTime = 0;
@@ -51,20 +60,47 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Event Listener
 btnSelectVideo.addEventListener('click', async () => {
-  const videoPath = await window.electronAPI.selectVideoFile();
-  if (videoPath) {
-    selectedVideoPath = videoPath;
-    inputVideo.value = videoPath;
-    
-    // Get video information
-    try {
-      statusText.textContent = 'Getting video information...';
-      const videoInfo = await window.electronAPI.getVideoInfo(videoPath);
-      statusText.textContent = `Video info: ${Math.round(videoInfo.duration)}s, ${videoInfo.width}x${videoInfo.height}, ${videoInfo.fps.toFixed(2)}fps`;
-    } catch (error) {
-      statusText.textContent = `Failed to get video information: ${error}`;
+  const videoPaths = await window.electronAPI.selectVideoFile();
+  if (videoPaths && videoPaths.length > 0) {
+    if (videoPaths.length === 1) {
+      // Single file selected - use original logic
+      selectedVideoPath = videoPaths[0];
+      inputVideo.value = videoPaths[0];
+      hideQueueSection();
+      
+      // Get video information
+      try {
+        statusText.textContent = 'Getting video information...';
+        const videoInfo = await window.electronAPI.getVideoInfo(videoPaths[0]);
+        statusText.textContent = `Video info: ${Math.round(videoInfo.duration)}s, ${videoInfo.width}x${videoInfo.height}, ${videoInfo.fps.toFixed(2)}fps`;
+      } catch (error) {
+        statusText.textContent = `Failed to get video information: ${error}`;
+      }
+    } else {
+      // Multiple files selected - show queue
+      videoQueue = videoPaths.map((path, index) => ({
+        id: Date.now() + index,
+        path: path,
+        name: path.split('/').pop(),
+        status: 'pending' // pending, processing, completed, error
+      }));
+      
+      inputVideo.value = `${videoPaths.length} videos selected - see queue below`;
+      showQueueSection();
+      updateQueueDisplay();
+      selectedVideoPath = ''; // Clear single video selection
+      statusText.textContent = `${videoPaths.length} videos added to queue`;
     }
   }
+});
+
+// Queue event listeners
+btnStartQueue.addEventListener('click', () => {
+  startQueueProcessing();
+});
+
+btnClearQueue.addEventListener('click', () => {
+  clearQueue();
 });
 
 btnSelectDir.addEventListener('click', async () => {
@@ -75,6 +111,12 @@ btnSelectDir.addEventListener('click', async () => {
 });
 
 btnStartProcess.addEventListener('click', async () => {
+  // If queue is active, don't allow direct processing
+  if (videoQueue.length > 0) {
+    statusText.textContent = 'Please use "Start Queue" to process multiple videos';
+    return;
+  }
+  
   if (!selectedVideoPath) {
     statusText.textContent = 'Please select a video file first';
     return;
@@ -248,6 +290,24 @@ async function stopProcessing() {
     btnReset.disabled = false; // Re-enable Reset button when processing is stopped
     stopTimer();
   }
+  
+  // Also stop queue processing
+  if (isQueueProcessing) {
+    isQueueProcessing = false;
+    btnStartQueue.disabled = false;
+    btnClearQueue.disabled = false;
+    btnStopProcess.disabled = true;
+    
+    // Update remaining videos to pending status
+    for (let i = currentQueueIndex; i < videoQueue.length; i++) {
+      if (videoQueue[i].status === 'processing') {
+        videoQueue[i].status = 'pending';
+      }
+    }
+    updateQueueDisplay();
+    
+    statusText.textContent = 'Queue processing stopped';
+  }
 }
 
 // Reset UI
@@ -271,9 +331,11 @@ function resetUI() {
   // Reset state text
   statusText.textContent = 'Ready';
   
-  // Clear video path
-  selectedVideoPath = '';
-  inputVideo.value = '';
+  // Only clear video path if not in queue mode
+  if (videoQueue.length === 0) {
+    selectedVideoPath = '';
+    inputVideo.value = '';
+  }
 }
 
 // Start timer
@@ -437,3 +499,167 @@ function animateProgressTransition(startPercent, endPercent) {
 function easeOutCubic(t) {
   return 1 - Math.pow(1 - t, 3);
 }
+
+// Queue management functions
+function showQueueSection() {
+  queueSection.style.display = 'block';
+  btnStartProcess.style.display = 'none'; // Hide single processing button
+}
+
+function hideQueueSection() {
+  queueSection.style.display = 'none';
+  btnStartProcess.style.display = 'inline-block'; // Show single processing button
+}
+
+function updateQueueDisplay() {
+  if (videoQueue.length === 0) {
+    queueList.innerHTML = '<div class="queue-empty">No videos in queue</div>';
+    return;
+  }
+
+  queueList.innerHTML = videoQueue.map(video => `
+    <div class="queue-item ${video.status}" data-id="${video.id}">
+      <div class="queue-item-info">
+        <div class="queue-item-name" title="${video.path}">${video.name}</div>
+        <div class="queue-item-status">${getStatusText(video.status)}</div>
+      </div>
+      <div class="queue-item-actions">
+        ${video.status === 'pending' ? `<button class="queue-remove-btn" onclick="removeFromQueue(${video.id})">×</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function getStatusText(status) {
+  switch (status) {
+    case 'pending': return 'Waiting...';
+    case 'processing': return 'Processing...';
+    case 'completed': return 'Completed';
+    case 'error': return 'Error';
+    default: return 'Unknown';
+  }
+}
+
+function removeFromQueue(videoId) {
+  if (isQueueProcessing) {
+    statusText.textContent = 'Cannot remove videos while queue is processing';
+    return;
+  }
+  
+  videoQueue = videoQueue.filter(video => video.id !== videoId);
+  updateQueueDisplay();
+  
+  if (videoQueue.length === 0) {
+    clearQueue();
+  } else {
+    statusText.textContent = `${videoQueue.length} videos in queue`;
+  }
+}
+
+function clearQueue() {
+  if (isQueueProcessing) {
+    statusText.textContent = 'Cannot clear queue while processing';
+    return;
+  }
+  
+  videoQueue = [];
+  hideQueueSection();
+  inputVideo.value = '';
+  statusText.textContent = 'Ready';
+}
+
+// Queue processing functions
+async function startQueueProcessing() {
+  if (videoQueue.length === 0) {
+    statusText.textContent = 'No videos in queue';
+    return;
+  }
+  
+  if (!inputOutputDir.value) {
+    statusText.textContent = 'Please select an output directory first';
+    return;
+  }
+  
+  isQueueProcessing = true;
+  currentQueueIndex = 0;
+  
+  // Update UI
+  btnStartQueue.disabled = true;
+  btnClearQueue.disabled = true;
+  btnStopProcess.disabled = false;
+  
+  // Save configuration
+  await saveConfig();
+  
+  // Start processing queue
+  await processQueue();
+}
+
+async function processQueue() {
+  while (currentQueueIndex < videoQueue.length && isQueueProcessing) {
+    const currentVideo = videoQueue[currentQueueIndex];
+    
+    try {
+      // Update video status to processing
+      currentVideo.status = 'processing';
+      updateQueueDisplay();
+      
+      // Set current video as selected
+      selectedVideoPath = currentVideo.path;
+      
+      statusText.textContent = `Processing ${currentQueueIndex + 1}/${videoQueue.length}: ${currentVideo.name}`;
+      
+      // Start processing this video
+      await startProcessing();
+      
+      // Mark as completed
+      currentVideo.status = 'completed';
+      updateQueueDisplay();
+      
+      // Wait a bit before next video (simulate manual operation)
+      if (currentQueueIndex < videoQueue.length - 1 && isQueueProcessing) {
+        statusText.textContent = 'Waiting before next video...';
+        await sleep(2000); // Wait 2 seconds
+        
+        // Reset UI for next video
+        resetUI();
+        await sleep(1000); // Wait 1 second after reset
+      }
+      
+    } catch (error) {
+      console.error('Error processing video in queue:', error);
+      currentVideo.status = 'error';
+      updateQueueDisplay();
+      
+      // Continue with next video after error
+      if (currentQueueIndex < videoQueue.length - 1 && isQueueProcessing) {
+        statusText.textContent = `Error processing ${currentVideo.name}, continuing with next video...`;
+        await sleep(2000);
+        resetUI();
+        await sleep(1000);
+      }
+    }
+    
+    currentQueueIndex++;
+  }
+  
+  // Queue processing finished
+  if (isQueueProcessing) {
+    isQueueProcessing = false;
+    btnStartQueue.disabled = false;
+    btnClearQueue.disabled = false;
+    btnStopProcess.disabled = true;
+    
+    const completedCount = videoQueue.filter(v => v.status === 'completed').length;
+    const errorCount = videoQueue.filter(v => v.status === 'error').length;
+    
+    statusText.textContent = `Queue processing finished. Completed: ${completedCount}, Errors: ${errorCount}`;
+  }
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Make removeFromQueue available globally
+window.removeFromQueue = removeFromQueue;
