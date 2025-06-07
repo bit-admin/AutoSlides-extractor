@@ -527,7 +527,7 @@ function updateQueueDisplay() {
 function getStatusText(status) {
   switch (status) {
     case 'pending': return 'Pending';
-    case 'processing': return 'Processing';
+    case 'processing': return 'Processing...';
     case 'completed': return 'Completed';
     case 'error': return 'Error';
     default: return 'Unknown';
