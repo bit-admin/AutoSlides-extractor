@@ -20,18 +20,6 @@
           </div>
         </div>
         
-        <!-- Queue section (initially hidden) -->
-        <div class="form-group" id="queueSection" style="display: none;">
-          <label>Video Queue</label>
-          <div class="queue-controls">
-            <button id="btnStartQueue" class="primary-button">Start Queue</button>
-            <button id="btnClearQueue" class="secondary-button">Clear Queue</button>
-          </div>
-          <div id="queueList" class="queue-list">
-            <!-- Queue items will be dynamically added here -->
-          </div>
-        </div>
-        
         <div class="form-group">
           <label for="inputOutputDir">Output Directory</label>
           <div class="input-with-button">
@@ -61,6 +49,14 @@
         </div>
       </section>
       
+      <!-- Queue section (initially hidden) -->
+      <section class="queue-section" id="queueSection" style="display: none;">
+        <span class="queue-label">Video Queue</span>
+        <div id="queueList" class="queue-list">
+          <!-- Queue items will be dynamically added here -->
+        </div>
+      </section>
+
       <section class="action-section">
         <button id="btnStartProcess" class="primary-button">Start Processing</button>
         <button id="btnStopProcess" class="secondary-button" disabled>Stop Processing</button>

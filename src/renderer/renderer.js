@@ -20,8 +20,6 @@ const enableDoubleVerification = document.getElementById('enableDoubleVerificati
 
 // Queue elements
 const queueSection = document.getElementById('queueSection');
-const btnStartQueue = document.getElementById('btnStartQueue');
-const btnClearQueue = document.getElementById('btnClearQueue');
 const queueList = document.getElementById('queueList');
 
 // Global variable
@@ -85,22 +83,13 @@ btnSelectVideo.addEventListener('click', async () => {
         status: 'pending' // pending, processing, completed, error
       }));
       
-      inputVideo.value = `${videoPaths.length} videos selected - see queue below`;
+      inputVideo.value = `${videoPaths.length} videos selected`;
       showQueueSection();
       updateQueueDisplay();
       selectedVideoPath = ''; // Clear single video selection
       statusText.textContent = `${videoPaths.length} videos added to queue`;
     }
   }
-});
-
-// Queue event listeners
-btnStartQueue.addEventListener('click', () => {
-  startQueueProcessing();
-});
-
-btnClearQueue.addEventListener('click', () => {
-  clearQueue();
 });
 
 btnSelectDir.addEventListener('click', async () => {
@@ -111,12 +100,14 @@ btnSelectDir.addEventListener('click', async () => {
 });
 
 btnStartProcess.addEventListener('click', async () => {
-  // If queue is active, don't allow direct processing
+  // Check if we're in queue mode
   if (videoQueue.length > 0) {
-    statusText.textContent = 'Please use "Start Queue" to process multiple videos';
+    // Start queue processing
+    startQueueProcessing();
     return;
   }
   
+  // Single video processing
   if (!selectedVideoPath) {
     statusText.textContent = 'Please select a video file first';
     return;
@@ -139,6 +130,10 @@ btnStopProcess.addEventListener('click', () => {
 });
 
 btnReset.addEventListener('click', () => {
+  // If queue is active, clear the queue
+  if (videoQueue.length > 0) {
+    clearQueue();
+  }
   resetUI();
 });
 
@@ -294,8 +289,7 @@ async function stopProcessing() {
   // Also stop queue processing
   if (isQueueProcessing) {
     isQueueProcessing = false;
-    btnStartQueue.disabled = false;
-    btnClearQueue.disabled = false;
+    btnStartProcess.disabled = false;
     btnStopProcess.disabled = true;
     
     // Update remaining videos to pending status
@@ -503,12 +497,14 @@ function easeOutCubic(t) {
 // Queue management functions
 function showQueueSection() {
   queueSection.style.display = 'block';
-  btnStartProcess.style.display = 'none'; // Hide single processing button
+  // Change button text to "Start Queue"
+  btnStartProcess.textContent = 'Start Queue';
 }
 
 function hideQueueSection() {
   queueSection.style.display = 'none';
-  btnStartProcess.style.display = 'inline-block'; // Show single processing button
+  // Reset button text to "Start Processing"
+  btnStartProcess.textContent = 'Start Processing';
 }
 
 function updateQueueDisplay() {
@@ -523,17 +519,15 @@ function updateQueueDisplay() {
         <div class="queue-item-name" title="${video.path}">${video.name}</div>
         <div class="queue-item-status">${getStatusText(video.status)}</div>
       </div>
-      <div class="queue-item-actions">
-        ${video.status === 'pending' ? `<button class="queue-remove-btn" onclick="removeFromQueue(${video.id})">×</button>` : ''}
-      </div>
+      ${video.status === 'pending' ? `<button class="queue-remove-btn" onclick="removeFromQueue(${video.id})">×</button>` : ''}
     </div>
   `).join('');
 }
 
 function getStatusText(status) {
   switch (status) {
-    case 'pending': return 'Waiting...';
-    case 'processing': return 'Processing...';
+    case 'pending': return 'Pending';
+    case 'processing': return 'Processing';
     case 'completed': return 'Completed';
     case 'error': return 'Error';
     default: return 'Unknown';
@@ -584,8 +578,7 @@ async function startQueueProcessing() {
   currentQueueIndex = 0;
   
   // Update UI
-  btnStartQueue.disabled = true;
-  btnClearQueue.disabled = true;
+  btnStartProcess.disabled = true;
   btnStopProcess.disabled = false;
   
   // Save configuration
@@ -646,8 +639,7 @@ async function processQueue() {
   // Queue processing finished
   if (isQueueProcessing) {
     isQueueProcessing = false;
-    btnStartQueue.disabled = false;
-    btnClearQueue.disabled = false;
+    btnStartProcess.disabled = false;
     btnStopProcess.disabled = true;
     
     const completedCount = videoQueue.filter(v => v.status === 'completed').length;

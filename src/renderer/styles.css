@@ -376,6 +376,120 @@ footer {
   background-color: #f8fafc;
 }
 
+
+/* Queue styles */
+.queue-section {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  background-color: #fff;
+}
+
+.queue-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #4a5568;
+  margin-bottom: 12px;
+}
+
+.queue-controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.queue-list {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: white;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.queue-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  background-color: white;
+  min-height: 36px;
+}
+
+.queue-item:last-child {
+  border-bottom: none;
+}
+
+.queue-item.processing {
+  background-color: #ebf8ff;
+  border-left: 3px solid #3182ce;
+}
+
+.queue-item.completed {
+  background-color: #f0fff4;
+  border-left: 3px solid #38a169;
+}
+
+.queue-item.error {
+  background-color: #fed7d7;
+  border-left: 3px solid #e53e3e;
+}
+
+.queue-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.queue-item-name {
+  font-weight: 500;
+  color: #2d3748;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  flex: 1;
+  min-width: 0;
+}
+
+.queue-item-status {
+  font-size: 12px;
+  color: #718096;
+  white-space: nowrap;
+  margin-right: 8px;
+}
+
+.queue-remove-btn {
+  background: none;
+  border: none;
+  color: #e53e3e;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 16px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  line-height: 1;
+}
+
+.queue-remove-btn:hover {
+  background-color: #fed7d7;
+}
+
+.queue-empty {
+  padding: 20px;
+  text-align: center;
+  color: #718096;
+  font-style: italic;
+}
+
 @media (prefers-color-scheme: dark) {
   body {
     background-color: #1a202c;
@@ -551,95 +665,59 @@ footer {
     border-top-color: #4a5568;
     background-color: #2d3748;
   }
-}
-
-/* Queue styles */
-.queue-controls {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.queue-list {
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background-color: #f8fafc;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.queue-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid #e2e8f0;
-  background-color: white;
-}
-
-.queue-item:last-child {
-  border-bottom: none;
-}
-
-.queue-item.processing {
-  background-color: #ebf8ff;
-  border-left: 4px solid #3182ce;
-}
-
-.queue-item.completed {
-  background-color: #f0fff4;
-  border-left: 4px solid #38a169;
-}
-
-.queue-item.error {
-  background-color: #fed7d7;
-  border-left: 4px solid #e53e3e;
-}
-
-.queue-item-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.queue-item-name {
-  font-weight: 500;
-  color: #2d3748;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-bottom: 4px;
-}
-
-.queue-item-status {
-  font-size: 12px;
-  color: #718096;
-}
-
-.queue-item-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.queue-remove-btn {
-  background: none;
-  border: none;
-  color: #e53e3e;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.queue-remove-btn:hover {
-  background-color: #fed7d7;
-}
-
-.queue-empty {
-  padding: 20px;
-  text-align: center;
-  color: #718096;
-  font-style: italic;
+  
+  /* Queue styles for dark mode */
+  .queue-section {
+    background-color: #2d3748;
+    border-bottom-color: #4a5568;
+  }
+  
+  .queue-label {
+    color: #e2e8f0;
+  }
+  
+  .queue-list {
+    background-color: #2d3748;
+    border-color: #4a5568;
+  }
+  
+  .queue-item {
+    background-color: #2d3748;
+    border-bottom-color: #4a5568;
+  }
+  
+  .queue-item.processing {
+    background-color: #1e3a8a;
+    border-left-color: #3182ce;
+  }
+  
+  .queue-item.completed {
+    background-color: #065f46;
+    border-left-color: #38a169;
+  }
+  
+  .queue-item.error {
+    background-color: #7f1d1d;
+    border-left-color: #e53e3e;
+  }
+  
+  .queue-item-name {
+    color: #e2e8f0;
+  }
+  
+  .queue-item-status {
+    color: #cbd5e0;
+  }
+  
+  .queue-remove-btn {
+    color: #fc8181;
+  }
+  
+  .queue-remove-btn:hover {
+    background-color: #7f1d1d;
+  }
+  
+  .queue-empty {
+    color: #cbd5e0;
+  }
 }
