@@ -641,7 +641,6 @@ footer {
 /* Modal Warning */
 .modal-warning {
   background: #fff5f5;
-  border-left: 4px solid #ef4444;
   padding: 8px 16px;
   margin: 0;
   border-bottom: 1px solid #fee2e2;
