@@ -89,7 +89,9 @@ const defaultConfig = {
   enableMultiCore: true,
   // Post-processing settings
   enablePostProcessing: true,
-  excludeHashes: ['c27e1de6798fc280'] // Default exclude hash
+  excludeHashes: [
+    { hash: 'c27e1de6798fc280', threshold: 0 } // Default exclude hash with threshold 0
+  ]
 };
 
 // Ensure the directory exists
@@ -596,12 +598,22 @@ ipcMain.handle('post-process-slides', async (event, { slidesDir, excludeHashes =
           
           // Check against exclude hashes
           let shouldRemove = false;
-          for (const excludeHash of excludeHashes) {
-            if (excludeHash && slideHash) {
-              const hammingDistance = calculateHammingDistance(slideHash, excludeHash);
-              if (hammingDistance <= thresholds.HAMMING_THRESHOLD_UP) {
-                shouldRemove = true;
-                break;
+          for (const excludeItem of excludeHashes) {
+            if (excludeItem && slideHash) {
+              // Support both old format (string) and new format (object)
+              const excludeHash = typeof excludeItem === 'string' ? excludeItem : excludeItem.hash;
+              const customThreshold = typeof excludeItem === 'object' ? excludeItem.threshold : 0;
+              
+              if (excludeHash) {
+                const hammingDistance = calculateHammingDistance(slideHash, excludeHash);
+                if (hammingDistance <= customThreshold) {
+                  shouldRemove = true;
+                  
+                  if (DEBUG_MODE) {
+                    console.log(`Slide ${path.basename(slideFile)} matches exclude hash ${excludeHash} (distance: ${hammingDistance}, threshold: ${customThreshold})`);
+                  }
+                  break;
+                }
               }
             }
           }

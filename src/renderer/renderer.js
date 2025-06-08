@@ -40,7 +40,8 @@ const sizeDiffThreshold = document.getElementById('sizeDiffThreshold');
 
 // Post-processing elements
 const enablePostProcessing = document.getElementById('enablePostProcessing');
-const excludeHashesList = document.getElementById('excludeHashesList');
+const excludeHashesTable = document.getElementById('excludeHashesTable');
+const excludeHashesTableBody = document.getElementById('excludeHashesTableBody');
 const btnSelectImageHash = document.getElementById('btnSelectImageHash');
 const btnAddCustomHash = document.getElementById('btnAddCustomHash');
 const btnSelectSlidesDir = document.getElementById('btnSelectSlidesDir');
@@ -59,7 +60,7 @@ let extractedCount = 0;
 let timerInterval = null;
 
 // Post-processing variables
-let excludeHashes = ['1976669999666699']; // Default exclude hash
+let excludeHashes = ['c27e1de6798fc280']; // Default exclude hash
 let selectedSlidesDir = '';
 
 // Progress Control Related Variables
@@ -91,7 +92,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Load post-processing settings
     enablePostProcessing.checked = config.enablePostProcessing !== false;
-    excludeHashes = config.excludeHashes || ['1976669999666699'];
+    
+    // Handle both old format (string array) and new format (object array)
+    const defaultExcludeHashes = []; // Start with empty array for testing
+    if (config.excludeHashes) {
+      if (Array.isArray(config.excludeHashes) && config.excludeHashes.length > 0) {
+        if (typeof config.excludeHashes[0] === 'string') {
+          // Convert old format to new format
+          excludeHashes = config.excludeHashes.map(hash => ({ hash, threshold: 0 }));
+        } else {
+          // Already in new format
+          excludeHashes = config.excludeHashes;
+        }
+      } else {
+        excludeHashes = defaultExcludeHashes;
+      }
+    } else {
+      excludeHashes = defaultExcludeHashes;
+    }
+    
     updateExcludeHashesList();
   } catch (error) {
     console.error('Failed to load configuration:', error);
@@ -228,12 +247,7 @@ btnSelectImageHash.addEventListener('click', async () => {
 });
 
 btnAddCustomHash.addEventListener('click', () => {
-  const hash = prompt('Enter perceptual hash value (16 hexadecimal characters):');
-  if (hash && hash.length === 16 && /^[0-9a-fA-F]+$/.test(hash)) {
-    addExcludeHash(hash.toLowerCase());
-  } else if (hash) {
-    alert('Please enter a valid 16-character hexadecimal hash value (0-9, a-f)');
-  }
+  addNewExcludeHash();
 });
 
 btnSelectSlidesDir.addEventListener('click', async () => {
@@ -403,39 +417,107 @@ async function saveConfig() {
 
 // Post-processing utility functions
 function updateExcludeHashesList() {
-  excludeHashesList.innerHTML = '';
+  const tableBody = document.getElementById('excludeHashesTableBody');
+  tableBody.innerHTML = '';
   
-  excludeHashes.forEach((hash, index) => {
-    const hashItem = document.createElement('div');
-    hashItem.className = 'hash-item';
+  excludeHashes.forEach((excludeItem, index) => {
+    const row = document.createElement('tr');
+    row.setAttribute('data-index', index);
     
-    const hashValue = document.createElement('span');
-    hashValue.className = 'hash-value';
-    hashValue.textContent = hash;
+    // Hash value cell
+    const hashCell = document.createElement('td');
+    hashCell.className = 'hash-cell';
     
-    const removeBtn = document.createElement('button');
-    removeBtn.className = 'hash-remove-btn';
-    removeBtn.textContent = '✕';
-    removeBtn.title = 'Remove hash';
-    removeBtn.onclick = () => removeExcludeHash(index);
+    const hashDisplay = document.createElement('div');
+    hashDisplay.className = 'hash-display';
+    const hashValue = typeof excludeItem === 'string' ? excludeItem : excludeItem.hash;
     
-    hashItem.appendChild(hashValue);
-    hashItem.appendChild(removeBtn);
-    excludeHashesList.appendChild(hashItem);
+    if (hashValue) {
+      hashDisplay.textContent = hashValue;
+      hashDisplay.title = 'Click to edit';
+    } else {
+      hashDisplay.textContent = 'Enter hash value...';
+      hashDisplay.className = 'hash-display empty';
+      hashDisplay.title = 'Click to add hash';
+    }
+    
+    hashCell.appendChild(hashDisplay);
+    
+    // Threshold cell  
+    const thresholdCell = document.createElement('td');
+    thresholdCell.className = 'threshold-cell';
+    
+    const thresholdDisplay = document.createElement('div');
+    thresholdDisplay.className = 'threshold-display';
+    const thresholdValue = typeof excludeItem === 'object' ? excludeItem.threshold : 0;
+    thresholdDisplay.textContent = thresholdValue.toString();
+    thresholdDisplay.title = 'Click to edit threshold';
+    
+    thresholdCell.appendChild(thresholdDisplay);
+    
+    // Actions cell
+    const actionsCell = document.createElement('td');
+    actionsCell.className = 'actions-cell';
+    
+    // Edit button with SVG icon
+    const editBtn = document.createElement('button');
+    editBtn.className = 'row-action-button';
+    editBtn.title = 'Edit hash';
+    editBtn.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+    `;
+    editBtn.onclick = () => editExcludeHash(index);
+    
+    // Delete button with SVG icon
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'row-action-button delete';
+    deleteBtn.title = 'Remove hash';
+    deleteBtn.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3,6 5,6 21,6"/>
+        <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2v2"/>
+        <line x1="10" y1="11" x2="10" y2="17"/>
+        <line x1="14" y1="11" x2="14" y2="17"/>
+      </svg>
+    `;
+    deleteBtn.onclick = () => removeExcludeHash(index);
+    
+    actionsCell.appendChild(editBtn);
+    actionsCell.appendChild(deleteBtn);
+    
+    row.appendChild(hashCell);
+    row.appendChild(thresholdCell);
+    row.appendChild(actionsCell);
+    tableBody.appendChild(row);
   });
   
-  // Add empty state message if no hashes
+  // Add empty state row if no hashes
   if (excludeHashes.length === 0) {
-    const emptyMessage = document.createElement('div');
-    emptyMessage.className = 'hash-empty';
-    emptyMessage.textContent = 'No exclude hashes configured';
-    excludeHashesList.appendChild(emptyMessage);
+    const emptyRow = document.createElement('tr');
+    const emptyCell = document.createElement('td');
+    emptyCell.colSpan = 3;
+    emptyCell.className = 'hash-empty';
+    emptyCell.textContent = 'No exclude hashes configured';
+    emptyCell.style.textAlign = 'center';
+    emptyCell.style.color = '#6c757d';
+    emptyCell.style.fontStyle = 'italic';
+    emptyCell.style.padding = '20px';
+    emptyRow.appendChild(emptyCell);
+    tableBody.appendChild(emptyRow);
   }
 }
 
 function addExcludeHash(hash) {
-  if (!excludeHashes.includes(hash)) {
-    excludeHashes.push(hash);
+  // Check if hash already exists
+  const existingIndex = excludeHashes.findIndex(item => 
+    (typeof item === 'string' ? item : item.hash) === hash
+  );
+  
+  if (existingIndex === -1) {
+    excludeHashes.push({ hash: hash, threshold: 0 }); // Default threshold is 0
     updateExcludeHashesList();
     // Auto-save configuration
     saveConfig();
@@ -443,10 +525,182 @@ function addExcludeHash(hash) {
 }
 
 function removeExcludeHash(index) {
-  excludeHashes.splice(index, 1);
+  if (index >= 0 && index < excludeHashes.length) {
+    const hashValue = typeof excludeHashes[index] === 'string' ? excludeHashes[index] : excludeHashes[index].hash;
+    
+    excludeHashes.splice(index, 1);
+    updateExcludeHashesList();
+    
+    // Only save config if we're removing a valid hash (not an empty one)
+    if (hashValue) {
+      saveConfig();
+    }
+  }
+}
+
+function editExcludeHash(index) {
+  if (index >= 0 && index < excludeHashes.length) {
+    const tableBody = document.getElementById('excludeHashesTableBody');
+    const row = tableBody.querySelector(`tr[data-index="${index}"]`);
+    
+    if (row) {
+      // Toggle editing state
+      if (row.classList.contains('editing')) {
+        // Save changes
+        saveHashEdit(index, row);
+      } else {
+        // Enter edit mode
+        enterEditMode(index, row);
+      }
+    }
+  }
+}
+
+function enterEditMode(index, row) {
+  const currentHash = typeof excludeHashes[index] === 'string' ? excludeHashes[index] : excludeHashes[index].hash;
+  const currentThreshold = typeof excludeHashes[index] === 'object' ? excludeHashes[index].threshold : 0;
+  
+  // Mark row as editing
+  row.classList.add('editing');
+  
+  // Replace hash display with input
+  const hashCell = row.querySelector('.hash-cell');
+  const hashDisplay = hashCell.querySelector('.hash-display');
+  
+  const hashInput = document.createElement('input');
+  hashInput.type = 'text';
+  hashInput.className = 'hash-input';
+  hashInput.value = currentHash || '';
+  hashInput.maxLength = 16;
+  hashInput.placeholder = 'Enter 16-chars hash';
+  
+  hashCell.innerHTML = '';
+  hashCell.appendChild(hashInput);
+  
+  // Replace threshold display with input
+  const thresholdCell = row.querySelector('.threshold-cell');
+  const thresholdDisplay = thresholdCell.querySelector('.threshold-display');
+  
+  const thresholdInput = document.createElement('input');
+  thresholdInput.type = 'number';
+  thresholdInput.className = 'threshold-input-edit';
+  thresholdInput.value = currentThreshold;
+  thresholdInput.min = '0';
+  thresholdInput.max = '64';
+  thresholdInput.step = '1';
+  thresholdInput.placeholder = 'Threshold';
+  
+  thresholdCell.innerHTML = '';
+  thresholdCell.appendChild(thresholdInput);
+  
+  // Update buttons in actions cell
+  const actionsCell = row.querySelector('.actions-cell');
+  const editBtn = actionsCell.querySelector('.row-action-button:first-child');
+  const deleteBtn = actionsCell.querySelector('.row-action-button.delete');
+  
+  // Change edit button to save
+  editBtn.className = 'row-action-button save';
+  editBtn.title = 'Save changes';
+  editBtn.innerHTML = `
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="20,6 9,17 4,12"/>
+    </svg>
+  `;
+  
+  // Change delete button to cancel
+  deleteBtn.className = 'row-action-button cancel';
+  deleteBtn.title = 'Cancel editing';
+  deleteBtn.innerHTML = `
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="18" y1="6" x2="6" y2="18"/>
+      <line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  `;
+  
+  // Focus the hash input
+  hashInput.focus();
+  hashInput.select();
+  
+  // Handle Enter key to save
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      saveHashEdit(index, row);
+    } else if (e.key === 'Escape') {
+      cancelHashEdit(index, row);
+    }
+  };
+  
+  hashInput.addEventListener('keypress', handleKeyPress);
+  thresholdInput.addEventListener('keypress', handleKeyPress);
+}
+
+function saveHashEdit(index, row) {
+  const hashInput = row.querySelector('.hash-input');
+  const thresholdInput = row.querySelector('.threshold-input-edit');
+  
+  const newHash = hashInput.value.toLowerCase().trim();
+  const newThreshold = parseInt(thresholdInput.value) || 0;
+  
+  // Validate hash
+  if (newHash.length !== 16 || !/^[0-9a-f]+$/.test(newHash)) {
+    alert('Please enter a valid 16-character hexadecimal hash value');
+    hashInput.focus();
+    return;
+  }
+  
+  // Validate threshold
+  if (newThreshold < 0 || newThreshold > 64) {
+    alert('Threshold must be between 0 and 64');
+    thresholdInput.focus();
+    return;
+  }
+  
+  // Check if hash already exists (excluding current index)
+  const existingIndex = excludeHashes.findIndex((item, idx) => 
+    idx !== index && (typeof item === 'string' ? item : item.hash) === newHash
+  );
+  
+  if (existingIndex !== -1) {
+    alert('This hash already exists in the exclude list');
+    hashInput.focus();
+    return;
+  }
+  
+  // Update the hash and threshold
+  excludeHashes[index] = { hash: newHash, threshold: newThreshold };
+  
+  // Exit edit mode and refresh
+  exitEditMode(row);
   updateExcludeHashesList();
-  // Auto-save configuration
   saveConfig();
+}
+
+function cancelHashEdit(index, row) {
+  exitEditMode(row);
+  updateExcludeHashesList();
+}
+
+function exitEditMode(row) {
+  row.classList.remove('editing');
+}
+
+function addNewExcludeHash() {
+  // Add a new empty hash entry for editing
+  const newHash = { hash: '', threshold: 0 };
+  const newIndex = excludeHashes.length;
+  excludeHashes.push(newHash);
+  
+  // Update the list to show the new row
+  updateExcludeHashesList();
+  
+  // Immediately enter edit mode for the new row
+  setTimeout(() => {
+    const tableBody = document.getElementById('excludeHashesTableBody');
+    const newRow = tableBody.querySelector(`tr[data-index="${newIndex}"]`);
+    if (newRow) {
+      enterEditMode(newIndex, newRow);
+    }
+  }, 10);
 }
 
 // Automatic post-processing after video completion
