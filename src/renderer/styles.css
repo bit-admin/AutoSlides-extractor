@@ -1258,32 +1258,85 @@ body.dark-mode .help-text {
     color: #e2e8f0;
   }
   
-  /* Dark mode styles for advanced threshold section */
-  .advanced-threshold-section {
-    border-top-color: #4a5568;
+  /* Dark mode for hash and threshold display elements */
+  .hash-display, .threshold-display {
+    background-color: #2d3748 !important;
+    border-color: #4a5568 !important;
+    color: #e2e8f0 !important;
   }
-  
-  .advanced-threshold-section h4 {
-    color: #e2e8f0;
+
+  .hash-display:hover, .threshold-display:hover {
+    background-color: #374151 !important;
+    border-color: #6b7280 !important;
   }
-  
-  .advanced-threshold-section .form-group label {
-    color: #e2e8f0;
+
+  .hash-display.empty {
+    color: #a0aec0 !important;
   }
-  
-  .advanced-threshold-section .form-group input[type="number"] {
-    background-color: #2d3748;
+
+  /* Edit Mode Input Dark Mode */
+  .hash-input, .threshold-input-edit {
+    background-color: #1a202c !important;
+    border-color: #4299e1 !important;
+    color: #e2e8f0 !important;
+  }
+
+  .hash-input:focus, .threshold-input-edit:focus {
+    border-color: #63b3ed !important;
+    box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.25) !important;
+  }
+
+  .table-add-button {
     border-color: #4a5568;
+    background-color: #2d3748;
+    color: #4299e1;
+  }
+
+  .table-add-button:hover {
+    background-color: #374151;
+    border-color: #4299e1;
+  }
+
+  /* General Dark Mode Styles for Post-Processing */
+  .hash-empty {
+    color: #a0aec0 !important;
+  }
+
+  .threshold-input {
+    border-color: #4a5568;
+    background-color: #1a202c;
     color: #e2e8f0;
   }
-  
-  .advanced-threshold-section .form-group input[type="number"]:focus {
+
+  .threshold-input:focus {
     border-color: #4299e1;
-    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+    box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.25);
   }
-  
-  .advanced-threshold-section .help-text {
+
+  .threshold-label {
     color: #a0aec0;
+  }
+
+  .hash-value {
+    color: #e2e8f0;
+  }
+
+  .hash-remove {
+    color: #fc8181;
+  }
+
+  .hash-remove:hover {
+    background-color: #742a2a;
+  }
+
+  .hash-list-container {
+    border-color: #4a5568;
+    background-color: #2d3748;
+  }
+
+  .hash-list li {
+    background-color: #1a202c;
+    border-color: #4a5568;
   }
 }
 
@@ -1646,50 +1699,6 @@ body.dark-mode .help-text {
   line-height: 1.4;
 }
 
-/* Dark mode for post-processing styles */
-@media (prefers-color-scheme: dark) {
-  .hash-list-container {
-    border-color: #4a5568;
-    background-color: #2d3748;
-  }
-
-  .hash-list li {
-    background-color: #1a202c;
-    border-color: #4a5568;
-  }
-
-  .hash-value {
-    color: #e2e8f0;
-  }
-
-  .hash-remove {
-    color: #fc8181;
-  }
-
-  .hash-remove:hover {
-    background-color: #742a2a;
-  }
-
-  .help-text {
-    color: #a0aec0;
-  }
-
-  .threshold-label {
-    color: #a0aec0;
-  }
-
-  .threshold-input {
-    background-color: #2d3748;
-    border-color: #4a5568;
-    color: #e2e8f0;
-  }
-
-  .threshold-input:focus {
-    border-color: #4299e1;
-    box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.25);
-  }
-}
-
 .hash-item {
   display: flex;
   flex-direction: column;
@@ -1833,202 +1842,68 @@ body.dark-mode .help-text {
     border-color: #4299e1;
   }
 
+  /* Row Action Button Dark Mode Styles */
   .row-action-button {
-    color: #a0aec0;
-  }
-
-  .row-action-button:hover {
-    background-color: #374151;
-  }
-
-  .row-action-button.save {
-    color: #68d391;
-  }
-
-  .row-action-button.save:hover {
-    background-color: #276749;
-  }
-
-  .row-action-button.cancel {
-    color: #a0aec0;
-  }
-
-  .row-action-button.cancel:hover {
-    background-color: #374151;
-  }
-
-  .row-action-button.delete {
-    color: #fc8181;
-  }
-
-  .row-action-button.delete:hover {
-    background-color: #742a2a;
-  }
-
-  /* General Dark Mode Styles for Post-Processing */
-  .hash-empty {
+    border-color: #4a5568 !important;
+    background-color: #2d3748 !important;
     color: #a0aec0 !important;
   }
 
-  .threshold-input {
-    border-color: #4a5568;
-    background-color: #1a202c;
-    color: #e2e8f0;
-  }
-
-  .threshold-input:focus {
-    border-color: #4299e1;
-    box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.25);
-  }
-
-  .threshold-label {
-    color: #a0aec0;
-  }
-
-  .hash-value {
-    color: #e2e8f0;
-  }
-
-  .hash-remove {
-    color: #fc8181;
-  }
-
-  .hash-remove:hover {
-    background-color: #742a2a;
-  }
-}
-
-/* Explicit dark mode class support for manual toggle */
-body.dark-mode {
-  /* Table Dark Mode Styles */
-  .hash-table-container {
-    border-color: #495057;
-    background-color: #2d3748;
-  }
-
-  .hash-table thead {
-    background-color: #1a202c;
-  }
-
-  .hash-table th {
-    color: #e2e8f0;
-    border-bottom-color: #4a5568;
-  }
-
-  .hash-table tbody tr {
-    border-bottom-color: #4a5568;
-  }
-
-  .hash-table tbody tr:hover {
-    background-color: #374151;
-  }
-
-  .hash-table tbody tr.editing {
-    background-color: #744d26;
-  }
-
-  .hash-table .hash-cell {
-    color: #a0aec0;
-  }
-
-  .hash-table-controls {
-    border-top-color: #4a5568;
-    background-color: #2d3748;
-  }
-
-  /* Input Dark Mode Styles */
-  .hash-input {
-    border-color: #4a5568;
-    background-color: #1a202c;
-    color: #e2e8f0;
-  }
-
-  .hash-input:focus {
-    border-color: #4299e1;
-    box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.25);
-  }
-
-  .threshold-input-table {
-    border-color: #4a5568;
-    background-color: #1a202c;
-    color: #e2e8f0;
-  }
-
-  .threshold-input-table:focus {
-    border-color: #4299e1;
-    box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.25);
-  }
-
-  /* Button Dark Mode Styles */
-  .table-action-button {
-    border-color: #4a5568;
-    background-color: #2d3748;
-    color: #e2e8f0;
-  }
-
-  .table-action-button:hover {
-    background-color: #374151;
-    border-color: #6b7280;
-  }
-
-  .table-action-button.primary {
-    background-color: #4299e1;
-    border-color: #4299e1;
-    color: #1a202c;
-  }
-
-  .table-action-button.primary:hover {
-    background-color: #3182ce;
-    border-color: #2c5282;
-  }
-
-  .table-action-button:disabled {
-    background-color: #374151;
-    color: #6b7280;
-    border-color: #4a5568;
-  }
-
-  .table-add-button {
-    border-color: #4a5568;
-    background-color: #2d3748;
-    color: #4299e1;
-  }
-
-  .table-add-button:hover {
-    background-color: #374151;
-    border-color: #4299e1;
-  }
-
-  .row-action-button {
-    color: #a0aec0;
-  }
-
   .row-action-button:hover {
-    background-color: #374151;
+    background-color: #374151 !important;
+    border-color: #6b7280 !important;
   }
 
   .row-action-button.save {
-    color: #68d391;
+    color: #68d391 !important;
   }
 
   .row-action-button.save:hover {
-    background-color: #276749;
+    background-color: #276749 !important;
   }
 
   .row-action-button.cancel {
-    color: #a0aec0;
+    color: #a0aec0 !important;
   }
 
   .row-action-button.cancel:hover {
-    background-color: #374151;
+    background-color: #374151 !important;
   }
 
   .row-action-button.delete {
-    color: #fc8181;
+    color: #fc8181 !important;
   }
 
   .row-action-button.delete:hover {
-    background-color: #742a2a;
+    background-color: #742a2a !important;
+  }
+
+  /* Hash and Threshold Display Dark Mode */
+  .hash-display, .threshold-display {
+    background-color: #2d3748 !important;
+    border-color: #4a5568 !important;
+    color: #e2e8f0 !important;
+  }
+
+  .hash-display:hover, .threshold-display:hover {
+    background-color: #374151 !important;
+    border-color: #6b7280 !important;
+  }
+
+  .hash-display.empty {
+    color: #a0aec0 !important;
+  }
+
+  /* Edit Mode Input Dark Mode */
+  .hash-input, .threshold-input-edit {
+    background-color: #1a202c !important;
+    border-color: #4299e1 !important;
+    color: #e2e8f0 !important;
+  }
+
+  .hash-input:focus, .threshold-input-edit:focus {
+    border-color: #63b3ed !important;
+    box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.25) !important;
   }
 
   /* General Dark Mode Styles for Post-Processing */
