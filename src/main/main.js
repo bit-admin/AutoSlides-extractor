@@ -86,7 +86,10 @@ const defaultConfig = {
   verificationCount: 3,
   sizeIdenticalThreshold: 0.0005,
   sizeDiffThreshold: 0.05,
-  enableMultiCore: true
+  enableMultiCore: true,
+  // Post-processing settings
+  enablePostProcessing: true,
+  excludeHashes: ['c27e1de6798fc280'] // Default exclude hash
 };
 
 // Ensure the directory exists
@@ -536,6 +539,139 @@ ipcMain.handle('cleanup-temp-dir', async (event, tempDir) => {
       resolve({ success: false, message: error.message });
     }
   });
+});
+
+// ===== Post-processing Functions =====
+
+// Calculate perceptual hash for a single image
+ipcMain.handle('calculate-image-hash', async (event, imagePath) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      // Read image file
+      const imageBuffer = await fs.promises.readFile(imagePath);
+      
+      // Create image processor
+      const imageProcessor = createImageProcessor(imageBuffer);
+      const metadata = await imageProcessor.getMetadata();
+      
+      // Calculate perceptual hash
+      const resized = await imageProcessor.resize(32, 32).toGrayscale();
+      const hash = await calculatePerceptualHash(imageProcessor, resized);
+      
+      resolve({ hash, success: true });
+    } catch (error) {
+      reject(`Error calculating image hash: ${error.message}`);
+    }
+  });
+});
+
+// Post-process extracted slides (remove similar images based on exclude hashes)
+ipcMain.handle('post-process-slides', async (event, { slidesDir, excludeHashes = [] }) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      // Get dynamic threshold values from config
+      const thresholds = getThresholds();
+      
+      if (!fs.existsSync(slidesDir)) {
+        reject('Slides directory does not exist');
+        return;
+      }
+      
+      // Get all slide files
+      const slideFiles = fs.readdirSync(slidesDir)
+        .filter(file => /\.(jpg|jpeg|png)$/i.test(file))
+        .map(file => path.join(slidesDir, file));
+      
+      let removedCount = 0;
+      let processedCount = 0;
+      
+      // Process each slide
+      for (const slideFile of slideFiles) {
+        try {
+          // Read and calculate hash for current slide
+          const imageBuffer = await fs.promises.readFile(slideFile);
+          const imageProcessor = createImageProcessor(imageBuffer);
+          const resized = await imageProcessor.resize(32, 32).toGrayscale();
+          const slideHash = await calculatePerceptualHash(imageProcessor, resized);
+          
+          // Check against exclude hashes
+          let shouldRemove = false;
+          for (const excludeHash of excludeHashes) {
+            if (excludeHash && slideHash) {
+              const hammingDistance = calculateHammingDistance(slideHash, excludeHash);
+              if (hammingDistance <= thresholds.HAMMING_THRESHOLD_UP) {
+                shouldRemove = true;
+                break;
+              }
+            }
+          }
+          
+          // Remove file if it matches exclude criteria
+          if (shouldRemove) {
+            await fs.promises.unlink(slideFile);
+            removedCount++;
+            
+            if (DEBUG_MODE) {
+              console.log(`Removed slide: ${path.basename(slideFile)} (hash: ${slideHash})`);
+            }
+          }
+          
+          processedCount++;
+          
+          // Report progress
+          const percent = Math.round((processedCount / slideFiles.length) * 100);
+          event.sender.send('post-process-progress', { 
+            percent, 
+            processedCount, 
+            totalCount: slideFiles.length,
+            removedCount
+          });
+          
+        } catch (error) {
+          console.error(`Error processing slide ${slideFile}:`, error);
+          // Continue with next file
+        }
+      }
+      
+      resolve({ 
+        success: true, 
+        processedCount, 
+        removedCount,
+        remainingCount: slideFiles.length - removedCount
+      });
+      
+    } catch (error) {
+      reject(`Error during post-processing: ${error.message}`);
+    }
+  });
+});
+
+// Select image file for hash calculation
+ipcMain.handle('select-image-file', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    filters: [
+      { name: 'Image Files', extensions: ['jpg', 'jpeg', 'png', 'bmp', 'gif'] }
+    ]
+  });
+  
+  if (!result.canceled && result.filePaths.length > 0) {
+    return result.filePaths[0];
+  }
+  return null;
+});
+
+// Select slides directory for manual post-processing
+ipcMain.handle('select-slides-dir', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory'],
+    title: 'Select Slides Directory for Post-processing'
+  });
+  
+  if (!result.canceled && result.filePaths.length > 0) {
+    return result.filePaths[0];
+  }
+  return null;
 });
 
 // ===== Image Processing Functions for Main Process =====
@@ -1366,16 +1502,26 @@ async function calculatePerceptualHash(img, preprocessedData) {
     const medianValue = dctLowFreq[Math.floor(dctLowFreq.length / 2)];
     
     // Generate binary hash
-    let hash = '';
+    let binaryHash = '';
     for (let y = 0; y < hashSize; y++) {
       for (let x = 0; x < hashSize; x++) {
         if (!(x === 0 && y === 0)) {
-          hash += (dct[y][x] >= medianValue) ? '1' : '0';
+          binaryHash += (dct[y][x] >= medianValue) ? '1' : '0';
         }
       }
     }
     
-    return hash;
+    // Convert binary hash to hexadecimal format (like reference software)
+    // Ensure 64-bit hash by padding if needed
+    const paddedBinary = binaryHash.padEnd(64, '0');
+    let hexHash = '';
+    for (let i = 0; i < paddedBinary.length; i += 4) {
+      const chunk = paddedBinary.substr(i, 4);
+      const hexDigit = parseInt(chunk, 2).toString(16);
+      hexHash += hexDigit;
+    }
+    
+    return hexHash;
   } catch (error) {
     console.error('pHash calculation error:', error);
     throw error;
@@ -1413,9 +1559,21 @@ function calculateHammingDistance(hash1, hash2) {
     throw new Error('Hash length mismatch');
   }
   
-  let distance = 0;
+  // Convert hex hashes back to binary for bit-wise comparison
+  let binary1 = '';
+  let binary2 = '';
+  
   for (let i = 0; i < hash1.length; i++) {
-    if (hash1[i] !== hash2[i]) {
+    const digit1 = parseInt(hash1[i], 16).toString(2).padStart(4, '0');
+    const digit2 = parseInt(hash2[i], 16).toString(2).padStart(4, '0');
+    binary1 += digit1;
+    binary2 += digit2;
+  }
+  
+  // Calculate bit differences
+  let distance = 0;
+  for (let i = 0; i < binary1.length; i++) {
+    if (binary1[i] !== binary2[i]) {
       distance++;
     }
   }

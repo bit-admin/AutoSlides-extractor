@@ -38,6 +38,14 @@ const verificationCount = document.getElementById('verificationCount');
 const sizeIdenticalThreshold = document.getElementById('sizeIdenticalThreshold');
 const sizeDiffThreshold = document.getElementById('sizeDiffThreshold');
 
+// Post-processing elements
+const enablePostProcessing = document.getElementById('enablePostProcessing');
+const excludeHashesList = document.getElementById('excludeHashesList');
+const btnSelectImageHash = document.getElementById('btnSelectImageHash');
+const btnAddCustomHash = document.getElementById('btnAddCustomHash');
+const btnSelectSlidesDir = document.getElementById('btnSelectSlidesDir');
+const btnRunPostProcess = document.getElementById('btnRunPostProcess');
+
 // Global variable
 let selectedVideoPath = '';
 let videoQueue = []; // Video queue
@@ -49,6 +57,10 @@ let processStartTime = 0;
 let processedFrames = 0;
 let extractedCount = 0;
 let timerInterval = null;
+
+// Post-processing variables
+let excludeHashes = ['1976669999666699']; // Default exclude hash
+let selectedSlidesDir = '';
 
 // Progress Control Related Variables
 let currentPhase = ''; // 'extracting' or 'analyzing'
@@ -76,6 +88,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     verificationCount.value = config.verificationCount || 3;
     sizeIdenticalThreshold.value = config.sizeIdenticalThreshold || 0.99;
     sizeDiffThreshold.value = config.sizeDiffThreshold || 0.1;
+
+    // Load post-processing settings
+    enablePostProcessing.checked = config.enablePostProcessing !== false;
+    excludeHashes = config.excludeHashes || ['1976669999666699'];
+    updateExcludeHashesList();
   } catch (error) {
     console.error('Failed to load configuration:', error);
   }
@@ -187,6 +204,85 @@ advancedSettingsModal.addEventListener('click', (e) => {
   }
 });
 
+// Post-processing Event Handlers
+btnSelectImageHash.addEventListener('click', async () => {
+  try {
+    const imagePath = await window.electronAPI.selectImageFile();
+    if (imagePath) {
+      statusText.textContent = 'Calculating image hash...';
+      const result = await window.electronAPI.calculateImageHash(imagePath);
+      if (result && result.hash) {
+        addExcludeHash(result.hash);
+        statusText.textContent = `Hash calculated and added: ${result.hash}`;
+        setTimeout(() => {
+          statusText.textContent = 'Ready';
+        }, 3000);
+      } else {
+        statusText.textContent = 'Failed to calculate image hash';
+      }
+    }
+  } catch (error) {
+    console.error('Failed to calculate image hash:', error);
+    statusText.textContent = 'Error calculating image hash';
+  }
+});
+
+btnAddCustomHash.addEventListener('click', () => {
+  const hash = prompt('Enter perceptual hash value (16 hexadecimal characters):');
+  if (hash && hash.length === 16 && /^[0-9a-fA-F]+$/.test(hash)) {
+    addExcludeHash(hash.toLowerCase());
+  } else if (hash) {
+    alert('Please enter a valid 16-character hexadecimal hash value (0-9, a-f)');
+  }
+});
+
+btnSelectSlidesDir.addEventListener('click', async () => {
+  try {
+    const dirPath = await window.electronAPI.selectSlidesDir();
+    if (dirPath) {
+      selectedSlidesDir = dirPath;
+      statusText.textContent = `Selected slides directory: ${dirPath}`;
+      btnRunPostProcess.disabled = false;
+    }
+  } catch (error) {
+    console.error('Failed to select slides directory:', error);
+    statusText.textContent = 'Error selecting slides directory';
+  }
+});
+
+btnRunPostProcess.addEventListener('click', async () => {
+  if (!selectedSlidesDir) {
+    statusText.textContent = 'Please select a slides directory first';
+    return;
+  }
+  
+  if (excludeHashes.length === 0) {
+    statusText.textContent = 'No exclude hashes configured';
+    return;
+  }
+  
+  try {
+    btnRunPostProcess.disabled = true;
+    statusText.textContent = 'Running post-processing...';
+    
+    const result = await window.electronAPI.postProcessSlides(selectedSlidesDir, excludeHashes);
+    
+    if (result.success) {
+      statusText.textContent = `Post-processing completed. Removed ${result.removedCount} similar images.`;
+    } else {
+      statusText.textContent = `Post-processing failed: ${result.error}`;
+    }
+  } catch (error) {
+    console.error('Post-processing failed:', error);
+    statusText.textContent = 'Post-processing failed';
+  } finally {
+    btnRunPostProcess.disabled = false;
+    setTimeout(() => {
+      statusText.textContent = 'Ready';
+    }, 5000);
+  }
+});
+
 // Advanced Settings Functions
 function showAdvancedSettings() {
   // Load current settings into the modal
@@ -202,6 +298,9 @@ function showAdvancedSettings() {
   const modalSizeIdenticalThreshold = advancedSettingsModal.querySelector('#sizeIdenticalThreshold');
   const modalSizeDiffThreshold = advancedSettingsModal.querySelector('#sizeDiffThreshold');
   
+  // Load post-processing settings into modal controls
+  const modalEnablePostProcessing = advancedSettingsModal.querySelector('#enablePostProcessing');
+  
   if (modalEnableMultiCore) modalEnableMultiCore.checked = enableMultiCore.checked;
   if (modalHammingThreshold) modalHammingThreshold.value = hammingThreshold.value;
   if (modalSsimThreshold) modalSsimThreshold.value = ssimThreshold.value;
@@ -209,6 +308,10 @@ function showAdvancedSettings() {
   if (modalVerificationCount) modalVerificationCount.value = verificationCount.value;
   if (modalSizeIdenticalThreshold) modalSizeIdenticalThreshold.value = sizeIdenticalThreshold.value;
   if (modalSizeDiffThreshold) modalSizeDiffThreshold.value = sizeDiffThreshold.value;
+  if (modalEnablePostProcessing) modalEnablePostProcessing.checked = enablePostProcessing.checked;
+  
+  // Update exclude hashes list in modal
+  updateExcludeHashesList();
   
   advancedSettingsModal.style.display = 'flex';
   
@@ -234,6 +337,9 @@ async function saveAdvancedSettings() {
     const modalSizeIdenticalThreshold = advancedSettingsModal.querySelector('#sizeIdenticalThreshold');
     const modalSizeDiffThreshold = advancedSettingsModal.querySelector('#sizeDiffThreshold');
     
+    // Get post-processing settings from modal
+    const modalEnablePostProcessing = advancedSettingsModal.querySelector('#enablePostProcessing');
+    
     // Update the main controls (though they're not visible now)
     enableDoubleVerification.checked = modalCheckbox.checked;
     if (modalEnableMultiCore) enableMultiCore.checked = modalEnableMultiCore.checked;
@@ -243,6 +349,7 @@ async function saveAdvancedSettings() {
     if (modalVerificationCount) verificationCount.value = modalVerificationCount.value;
     if (modalSizeIdenticalThreshold) sizeIdenticalThreshold.value = modalSizeIdenticalThreshold.value;
     if (modalSizeDiffThreshold) sizeDiffThreshold.value = modalSizeDiffThreshold.value;
+    if (modalEnablePostProcessing) enablePostProcessing.checked = modalEnablePostProcessing.checked;
     
     // Save the configuration
     await saveConfig();
@@ -283,12 +390,86 @@ async function saveConfig() {
       pixelChangeRatioThreshold: parseFloat(pixelChangeRatioThreshold.value),
       verificationCount: parseInt(verificationCount.value),
       sizeIdenticalThreshold: parseFloat(sizeIdenticalThreshold.value),
-      sizeDiffThreshold: parseFloat(sizeDiffThreshold.value)
+      sizeDiffThreshold: parseFloat(sizeDiffThreshold.value),
+      enablePostProcessing: enablePostProcessing.checked,
+      excludeHashes: excludeHashes
     };
     
     await window.electronAPI.saveConfig(config);
   } catch (error) {
     console.error('Failed to save configuration:', error);
+  }
+}
+
+// Post-processing utility functions
+function updateExcludeHashesList() {
+  excludeHashesList.innerHTML = '';
+  
+  excludeHashes.forEach((hash, index) => {
+    const hashItem = document.createElement('div');
+    hashItem.className = 'hash-item';
+    
+    const hashValue = document.createElement('span');
+    hashValue.className = 'hash-value';
+    hashValue.textContent = hash;
+    
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'hash-remove-btn';
+    removeBtn.textContent = '✕';
+    removeBtn.title = 'Remove hash';
+    removeBtn.onclick = () => removeExcludeHash(index);
+    
+    hashItem.appendChild(hashValue);
+    hashItem.appendChild(removeBtn);
+    excludeHashesList.appendChild(hashItem);
+  });
+  
+  // Add empty state message if no hashes
+  if (excludeHashes.length === 0) {
+    const emptyMessage = document.createElement('div');
+    emptyMessage.className = 'hash-empty';
+    emptyMessage.textContent = 'No exclude hashes configured';
+    excludeHashesList.appendChild(emptyMessage);
+  }
+}
+
+function addExcludeHash(hash) {
+  if (!excludeHashes.includes(hash)) {
+    excludeHashes.push(hash);
+    updateExcludeHashesList();
+    // Auto-save configuration
+    saveConfig();
+  }
+}
+
+function removeExcludeHash(index) {
+  excludeHashes.splice(index, 1);
+  updateExcludeHashesList();
+  // Auto-save configuration
+  saveConfig();
+}
+
+// Automatic post-processing after video completion
+async function runAutomaticPostProcessing(slidesDir) {
+  if (!enablePostProcessing.checked || excludeHashes.length === 0) {
+    return { success: true, skipped: true };
+  }
+  
+  try {
+    statusText.textContent = 'Running automatic post-processing...';
+    const result = await window.electronAPI.postProcessSlides(slidesDir, excludeHashes);
+    
+    if (result.success) {
+      statusText.textContent = `Post-processing completed. Removed ${result.removedCount} similar images.`;
+      return result;
+    } else {
+      statusText.textContent = `Post-processing failed: ${result.error}`;
+      return result;
+    }
+  } catch (error) {
+    console.error('Automatic post-processing failed:', error);
+    statusText.textContent = 'Automatic post-processing failed';
+    return { success: false, error: error.message };
   }
 }
 
@@ -373,7 +554,19 @@ async function startProcessing() {
       }, 50);
       
       stopTimer(); // Stop the timer
-      statusText.textContent = `Processing complete, extracted ${extractedCount} slides`;
+      
+      // Run automatic post-processing if enabled
+      const slidesDir = await window.electronAPI.createSlidesDir(inputOutputDir.value);
+      const postProcessResult = await runAutomaticPostProcessing(slidesDir);
+      
+      if (postProcessResult.skipped) {
+        statusText.textContent = `Processing complete, extracted ${extractedCount} slides`;
+      } else if (postProcessResult.success) {
+        const finalCount = extractedCount - postProcessResult.removedCount;
+        statusText.textContent = `Processing complete, extracted ${extractedCount} slides (${postProcessResult.removedCount} removed by post-processing, ${finalCount} final)`;
+      } else {
+        statusText.textContent = `Processing complete, extracted ${extractedCount} slides (post-processing failed)`;
+      }
     } else {
       throw new Error(analysisResult.error || 'Unknown error during analysis');
     }

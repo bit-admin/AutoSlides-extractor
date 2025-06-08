@@ -182,6 +182,38 @@
             </div>
           </div>
         </div>
+
+        <!-- Post-Processing Section -->
+        <div class="settings-section">
+          <h4 class="section-title">Post-Processing Options</h4>
+
+          <div class="form-group checkbox-group">
+            <input type="checkbox" id="enablePostProcessing" checked>
+            <label for="enablePostProcessing">Enable Post-Processing</label>
+          </div>
+
+          <div class="form-group">
+            <label for="excludeHashesList">Exclude Hash Values</label>
+            <div class="hash-list-container">
+              <ul id="excludeHashesList" class="hash-list">
+                <!-- Exclude hashes will be populated here -->
+              </ul>
+              <div class="hash-controls">
+                <button type="button" id="btnSelectImageHash" class="secondary-button">Add from Image</button>
+                <button type="button" id="btnAddCustomHash" class="secondary-button">Add Custom Hash</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Manual Post-Processing</label>
+            <div class="manual-processing-container">
+              <button type="button" id="btnSelectSlidesDir" class="secondary-button">Select Slides Directory</button>
+              <button type="button" id="btnRunPostProcess" class="primary-button" disabled>Run Post-Processing</button>
+            </div>
+            <small class="help-text">Select a directory containing extracted slides to remove duplicates manually</small>
+          </div>
+        </div>
       </div>
       <div class="modal-footer">
         <button id="btnCancelAdvanced" class="secondary-button">Cancel</button>

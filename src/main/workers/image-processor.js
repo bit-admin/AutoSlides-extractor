@@ -444,16 +444,26 @@ async function calculatePerceptualHash(img, preprocessedData) {
     const medianValue = dctLowFreq[Math.floor(dctLowFreq.length / 2)];
     
     // Generate binary hash
-    let hash = '';
+    let binaryHash = '';
     for (let y = 0; y < hashSize; y++) {
       for (let x = 0; x < hashSize; x++) {
         if (!(x === 0 && y === 0)) {
-          hash += (dct[y][x] >= medianValue) ? '1' : '0';
+          binaryHash += (dct[y][x] >= medianValue) ? '1' : '0';
         }
       }
     }
     
-    return hash;
+    // Convert binary hash to hexadecimal format (like reference software)
+    // Ensure 64-bit hash by padding if needed
+    const paddedBinary = binaryHash.padEnd(64, '0');
+    let hexHash = '';
+    for (let i = 0; i < paddedBinary.length; i += 4) {
+      const chunk = paddedBinary.substr(i, 4);
+      const hexDigit = parseInt(chunk, 2).toString(16);
+      hexHash += hexDigit;
+    }
+    
+    return hexHash;
   } catch (error) {
     console.error('pHash calculation error:', error);
     throw error;
@@ -491,9 +501,21 @@ function calculateHammingDistance(hash1, hash2) {
     throw new Error('Hash length mismatch');
   }
   
-  let distance = 0;
+  // Convert hex hashes back to binary for bit-wise comparison
+  let binary1 = '';
+  let binary2 = '';
+  
   for (let i = 0; i < hash1.length; i++) {
-    if (hash1[i] !== hash2[i]) {
+    const digit1 = parseInt(hash1[i], 16).toString(2).padStart(4, '0');
+    const digit2 = parseInt(hash2[i], 16).toString(2).padStart(4, '0');
+    binary1 += digit1;
+    binary2 += digit2;
+  }
+  
+  // Calculate bit differences
+  let distance = 0;
+  for (let i = 0; i < binary1.length; i++) {
+    if (binary1[i] !== binary2[i]) {
       distance++;
     }
   }

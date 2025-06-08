@@ -60,5 +60,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.removeAllListeners('extraction-progress');
     ipcRenderer.removeAllListeners('analysis-progress');
     ipcRenderer.removeAllListeners('slide-extracted');
-  }
+  },
+
+  // Post-processing methods
+  calculateImageHash: (imagePath) => ipcRenderer.invoke('calculate-image-hash', imagePath),
+  postProcessSlides: (slidesDir, excludeHashes) => ipcRenderer.invoke('post-process-slides', { slidesDir, excludeHashes }),
+  selectImageFile: () => ipcRenderer.invoke('select-image-file'),
+  selectSlidesDir: () => ipcRenderer.invoke('select-slides-dir')
 });

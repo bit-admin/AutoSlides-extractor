@@ -1258,3 +1258,117 @@ footer {
     color: #a0aec0;
   }
 }
+
+/* Post-Processing Styles */
+.hash-list-container {
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  padding: 12px;
+  background-color: #f8f9fa;
+}
+
+.hash-list {
+  list-style: none;
+  margin: 0 0 12px 0;
+  padding: 0;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.hash-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  margin-bottom: 4px;
+  background-color: #fff;
+  border: 1px solid #e1e5e9;
+  border-radius: 6px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 12px;
+}
+
+.hash-list li:last-child {
+  margin-bottom: 0;
+}
+
+.hash-value {
+  flex: 1;
+  margin-right: 8px;
+  word-break: break-all;
+  color: #495057;
+}
+
+.hash-remove {
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.hash-remove:hover {
+  background-color: #f8d7da;
+}
+
+.hash-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.hash-controls button {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.manual-processing-container {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.manual-processing-container button {
+  flex: 1;
+  min-width: 150px;
+}
+
+.help-text {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Dark mode for post-processing styles */
+@media (prefers-color-scheme: dark) {
+  .hash-list-container {
+    border-color: #4a5568;
+    background-color: #2d3748;
+  }
+
+  .hash-list li {
+    background-color: #1a202c;
+    border-color: #4a5568;
+  }
+
+  .hash-value {
+    color: #e2e8f0;
+  }
+
+  .hash-remove {
+    color: #fc8181;
+  }
+
+  .hash-remove:hover {
+    background-color: #742a2a;
+  }
+
+  .help-text {
+    color: #a0aec0;
+  }
+}
