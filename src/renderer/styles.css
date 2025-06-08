@@ -636,6 +636,58 @@ footer {
   margin-bottom: 0;
 }
 
+/* Advanced threshold section styling */
+.advanced-threshold-section {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e9ecef;
+}
+
+.advanced-threshold-section h4 {
+  margin-bottom: 16px;
+  color: #495057;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.advanced-threshold-section .form-group {
+  margin-bottom: 16px;
+}
+
+.advanced-threshold-section .form-group label {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  display: block;
+  color: #495057;
+}
+
+.advanced-threshold-section .form-group input[type="number"] {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 13px;
+  background-color: #fff;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.advanced-threshold-section .form-group input[type="number"]:focus {
+  outline: none;
+  border-color: #2c7be5;
+  box-shadow: 0 0 0 3px rgba(44, 123, 229, 0.1);
+}
+
+.advanced-threshold-section .help-text {
+  font-size: 11px;
+  color: #6c757d;
+  margin-top: 4px;
+  line-height: 1.3;
+  display: block;
+}
+
 @media (prefers-color-scheme: dark) {
   body {
     background-color: #1a202c;
@@ -935,5 +987,33 @@ footer {
   
   .modal-body .checkbox-group label {
     color: #e2e8f0;
+  }
+  
+  /* Dark mode styles for advanced threshold section */
+  .advanced-threshold-section {
+    border-top-color: #4a5568;
+  }
+  
+  .advanced-threshold-section h4 {
+    color: #e2e8f0;
+  }
+  
+  .advanced-threshold-section .form-group label {
+    color: #e2e8f0;
+  }
+  
+  .advanced-threshold-section .form-group input[type="number"] {
+    background-color: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+  }
+  
+  .advanced-threshold-section .form-group input[type="number"]:focus {
+    border-color: #4299e1;
+    box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+  }
+  
+  .advanced-threshold-section .help-text {
+    color: #a0aec0;
   }
 }

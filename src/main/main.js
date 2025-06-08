@@ -17,7 +17,7 @@ const PIXEL_CHANGE_RATIO_THRESHOLD = 0.005;  // Base comparison method's change 
 const PIXEL_DIFF_THRESHOLD = 30;      // Pixel difference threshold
 const SSIM_C1_FACTOR = 0.01;          // C1 factor in SSIM calculation
 const SSIM_C2_FACTOR = 0.03;          // C2 factor in SSIM calculation
-const VERIFICATION_COUNT = 4;         // The number of consecutive identical frames required for secondary verification
+const VERIFICATION_COUNT = 3;         // The number of consecutive identical frames required for secondary verification
 const SIZE_IDENTICAL_THRESHOLD = 0.0005; // 0.05% file size difference threshold for identical images
 const SIZE_DIFF_THRESHOLD = 0.05;     // 5% file size difference threshold for different images
 
@@ -77,17 +77,16 @@ const configPath = path.join(userDataPath, 'config.json');
 const defaultConfig = {
   outputDir: path.join(app.getPath('downloads'), 'extracted'),
   checkInterval: 2,
-  captureStrategy: {
-    gaussianBlurSigma: 0.5,
-    pixelDiffThreshold: 30,
-    changeRatioThreshold: 0.005,
-    hammingThresholdLow: 0,
-    hammingThresholdUp: 5,
-    ssimThreshold: 0.999
-  },
   comparisonMethod: 'default',
   enableDoubleVerification: true,
-  verificationCount: 3
+  // Advanced threshold settings
+  hammingThreshold: 5,
+  ssimThreshold: 0.999,
+  pixelChangeRatioThreshold: 0.005,
+  verificationCount: 3,
+  sizeIdenticalThreshold: 0.0005,
+  sizeDiffThreshold: 0.05,
+  enableMultiCore: true
 };
 
 // Ensure the directory exists
@@ -120,6 +119,20 @@ function saveConfig(config) {
     console.error('Failed to save configuration file:', error);
     return false;
   }
+}
+
+// Get dynamic threshold values from config
+function getThresholds() {
+  const config = loadConfig();
+  return {
+    HAMMING_THRESHOLD_UP: config.hammingThreshold,
+    SSIM_THRESHOLD: config.ssimThreshold,
+    PIXEL_CHANGE_RATIO_THRESHOLD: config.pixelChangeRatioThreshold,
+    VERIFICATION_COUNT: config.verificationCount,
+    SIZE_IDENTICAL_THRESHOLD: config.sizeIdenticalThreshold,
+    SIZE_DIFF_THRESHOLD: config.sizeDiffThreshold,
+    ENABLE_MULTI_CORE: config.enableMultiCore
+  };
 }
 
 function createWindow() {
@@ -561,8 +574,11 @@ ipcMain.handle('analyze-frames', async (event, {
 
 // Process frames to detect slides with multi-core support
 async function processFrames(event, frameFiles, slidesDir, options) {
+  // Get dynamic threshold values from config
+  const thresholds = getThresholds();
+  
   // If multi-core is disabled, use the original single-core method
-  if (!ENABLE_MULTI_CORE) {
+  if (!thresholds.ENABLE_MULTI_CORE) {
     return await processFramesSingleCore(event, frameFiles, slidesDir, options);
   }
   
@@ -590,16 +606,16 @@ async function processFrames(event, frameFiles, slidesDir, options) {
       const worker = new Worker(path.join(__dirname, 'workers', 'image-processor.js'), {
         workerData: {
           constants: {
-            HAMMING_THRESHOLD_UP,
-            SSIM_THRESHOLD,
-            PIXEL_CHANGE_RATIO_THRESHOLD,
+            HAMMING_THRESHOLD_UP: thresholds.HAMMING_THRESHOLD_UP,
+            SSIM_THRESHOLD: thresholds.SSIM_THRESHOLD,
+            PIXEL_CHANGE_RATIO_THRESHOLD: thresholds.PIXEL_CHANGE_RATIO_THRESHOLD,
             PIXEL_DIFF_THRESHOLD,
             SSIM_C1_FACTOR,
             SSIM_C2_FACTOR,
-            VERIFICATION_COUNT,
+            VERIFICATION_COUNT: thresholds.VERIFICATION_COUNT,
             DEBUG_MODE,
-            SIZE_IDENTICAL_THRESHOLD,
-            SIZE_DIFF_THRESHOLD
+            SIZE_IDENTICAL_THRESHOLD: thresholds.SIZE_IDENTICAL_THRESHOLD,
+            SIZE_DIFF_THRESHOLD: thresholds.SIZE_DIFF_THRESHOLD
           }
         }
       });
@@ -698,6 +714,9 @@ async function processFrames(event, frameFiles, slidesDir, options) {
 async function processFramesSingleCore(event, frameFiles, slidesDir, options) {
   const { comparisonMethod, enableDoubleVerification } = options;
   
+  // Get dynamic threshold values from config
+  const thresholds = getThresholds();
+  
   // Track progress
   let processedFrames = 0;
   const totalFrames = frameFiles.length;
@@ -755,7 +774,7 @@ async function processFramesSingleCore(event, frameFiles, slidesDir, options) {
       }
       
       // Compare the current frame with the previous frame
-      const comparisonResult = await compareImages(lastImageBuffer, currentImageBuffer, comparisonMethod);
+      const comparisonResult = await compareImages(lastImageBuffer, currentImageBuffer, comparisonMethod, thresholds);
       
       // If a change is detected
       if (comparisonResult.changed) {
@@ -769,16 +788,16 @@ async function processFramesSingleCore(event, frameFiles, slidesDir, options) {
             // First detection of change
             potentialNewImageBuffer = currentImageBuffer;
             currentVerification = 1;
-          } else if (currentVerification < VERIFICATION_COUNT) {
+          } else if (currentVerification < thresholds.VERIFICATION_COUNT) {
             // Compare the current frame with the potential new frame
-            const verificationResult = await compareImages(potentialNewImageBuffer, currentImageBuffer, comparisonMethod);
+            const verificationResult = await compareImages(potentialNewImageBuffer, currentImageBuffer, comparisonMethod, thresholds);
             
             if (!verificationResult.changed) {
               // Frame identical, increase verification count
               currentVerification++;
               
               // Reached verification count, save the slide
-              if (currentVerification >= VERIFICATION_COUNT) {
+              if (currentVerification >= thresholds.VERIFICATION_COUNT) {
                 lastImageBuffer = potentialNewImageBuffer;
                 const slideNumber = String(extractedSlides.length + 1).padStart(3, '0');
                 const slideFilename = `slide-${slideNumber}.jpg`;
@@ -834,14 +853,14 @@ async function processFramesSingleCore(event, frameFiles, slidesDir, options) {
         }
       } else if (potentialNewImageBuffer !== null && enableDoubleVerification) {
         // Compare the current frame with the potential new frame
-        const verificationResult = await compareImages(potentialNewImageBuffer, currentImageBuffer, comparisonMethod);
+        const verificationResult = await compareImages(potentialNewImageBuffer, currentImageBuffer, comparisonMethod, thresholds);
         
         if (!verificationResult.changed) {
           // Frame identical, increase verification count
           currentVerification++;
           
           // Reached verification count, save the slide
-          if (currentVerification >= VERIFICATION_COUNT) {
+          if (currentVerification >= thresholds.VERIFICATION_COUNT) {
             lastImageBuffer = potentialNewImageBuffer;
             
             const slideNumber = String(extractedSlides.length + 1).padStart(3, '0');
@@ -970,7 +989,7 @@ async function mergeWorkerResults(event, workerResults, slidesDir, enableDoubleV
           const comparisonResult = await compareImages(potentialSlideBuffer, nextResult.lastFrame);
           
           // If they are similar, this is potentially a slide transition at chunk boundary
-          if (!comparisonResult.changed && currentVerification >= VERIFICATION_COUNT - 1) {
+          if (!comparisonResult.changed && currentVerification >= thresholds.VERIFICATION_COUNT - 1) {
             slideIndex++;
             
             const slideNumber = String(slideIndex).padStart(3, '0');
@@ -1062,14 +1081,19 @@ async function createSlidesDir(baseDir) {
 const preprocessCache = new Map();
 
 // Compare two images using our new native image processor
-async function compareImages(buffer1, buffer2, method = 'default') {
+async function compareImages(buffer1, buffer2, method = 'default', thresholds = null) {
+  // Use default thresholds if none provided
+  if (!thresholds) {
+    thresholds = getThresholds();
+  }
+  
   try {
     // Add file size comparison as initial screening
     const sizeDifference = Math.abs(buffer1.length - buffer2.length);
     const sizeRatio = sizeDifference / Math.max(buffer1.length, buffer2.length);
     
     // If the file sizes are extremely similar (difference less than the threshold), directly determine them as the same image.
-    if (sizeRatio < SIZE_IDENTICAL_THRESHOLD) {
+    if (sizeRatio < thresholds.SIZE_IDENTICAL_THRESHOLD) {
       if (DEBUG_MODE) {
         console.log(`File size nearly identical: ${sizeRatio.toFixed(6)}, buffer1: ${buffer1.length}, buffer2: ${buffer2.length}`);
       }
@@ -1083,7 +1107,7 @@ async function compareImages(buffer1, buffer2, method = 'default') {
     }
     
     // If the file size difference exceeds the threshold, directly determine them as different images.
-    if (sizeRatio > SIZE_DIFF_THRESHOLD) {
+    if (sizeRatio > thresholds.SIZE_DIFF_THRESHOLD) {
       if (DEBUG_MODE) {
         console.log(`File size difference detected: ${sizeRatio.toFixed(4)}, buffer1: ${buffer1.length}, buffer2: ${buffer2.length}`);
       }
@@ -1103,10 +1127,10 @@ async function compareImages(buffer1, buffer2, method = 'default') {
     // Use different comparison strategies
     switch (method) {
       case 'basic':
-        return await performBasicComparison(img1, img2, metadata1, metadata2, preprocessedData);
+        return await performBasicComparison(img1, img2, metadata1, metadata2, preprocessedData, thresholds);
       case 'default':
       default:
-        return await performPerceptualComparison(img1, img2, metadata1, metadata2, preprocessedData);
+        return await performPerceptualComparison(img1, img2, metadata1, metadata2, preprocessedData, thresholds);
     }
   } catch (error) {
     console.error('Image comparison error:', error);
@@ -1200,7 +1224,7 @@ async function preprocessImagesForComparison(buffer1, buffer2) {
 }
 
 // Basic comparison using pixel difference
-async function performBasicComparison(img1, img2, metadata1, metadata2, preprocessedData) {
+async function performBasicComparison(img1, img2, metadata1, metadata2, preprocessedData, thresholds) {
   try {
     // Ensure both images are the same size for comparison
     const width = Math.min(metadata1.width, metadata2.width);
@@ -1243,7 +1267,7 @@ async function performBasicComparison(img1, img2, metadata1, metadata2, preproce
     const changeRatio = diffCount / totalPixels;
     
     return {
-      changed: changeRatio > PIXEL_CHANGE_RATIO_THRESHOLD,
+      changed: changeRatio > thresholds.PIXEL_CHANGE_RATIO_THRESHOLD,
       changeRatio,
       method: 'basic',
       diffCount,
@@ -1256,7 +1280,7 @@ async function performBasicComparison(img1, img2, metadata1, metadata2, preproce
 }
 
 // Perceptual comparison using pHash and SSIM
-async function performPerceptualComparison(img1, img2, metadata1, metadata2, preprocessedData) {
+async function performPerceptualComparison(img1, img2, metadata1, metadata2, preprocessedData, thresholds) {
   try {
     // Calculate perceptual hash using preprocessed data
     const hash1 = await calculatePerceptualHash(img1, preprocessedData.standard32_1);
@@ -1269,7 +1293,7 @@ async function performPerceptualComparison(img1, img2, metadata1, metadata2, pre
       console.log(`pHash comparison: Hamming distance = ${hammingDistance}`);
     }
     
-    if (hammingDistance > HAMMING_THRESHOLD_UP) {
+    if (hammingDistance > thresholds.HAMMING_THRESHOLD_UP) {
       // Hash significantly different
       return {
         changed: true,
@@ -1294,7 +1318,7 @@ async function performPerceptualComparison(img1, img2, metadata1, metadata2, pre
       }
       
       return {
-        changed: ssim < SSIM_THRESHOLD,
+        changed: ssim < thresholds.SSIM_THRESHOLD,
         changeRatio: 1.0 - ssim,
         method: 'SSIM-like',
         similarity: ssim
@@ -1303,7 +1327,7 @@ async function performPerceptualComparison(img1, img2, metadata1, metadata2, pre
   } catch (error) {
     console.error('Perceptual comparison error:', error);
     // Fall back to basic method
-    return performBasicComparison(img1, img2, metadata1, metadata2, preprocessedData);
+    return performBasicComparison(img1, img2, metadata1, metadata2, preprocessedData, thresholds);
   }
 }
 

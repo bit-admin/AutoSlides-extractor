@@ -126,6 +126,57 @@
           <input type="checkbox" id="enableDoubleVerification" checked>
           <label for="enableDoubleVerification">Enable Double Verification</label>
         </div>
+        
+        <div class="form-group checkbox-group">
+          <input type="checkbox" id="enableMultiCore" checked>
+          <label for="enableMultiCore">Enable Multi-Core Processing</label>
+        </div>
+        
+        <div class="advanced-threshold-section">
+          <h4>Threshold Settings</h4>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="hammingThreshold">Hamming Distance Threshold</label>
+              <input type="number" id="hammingThreshold" min="1" max="64" step="1" value="5">
+              <small class="help-text">Higher values are more sensitive to differences (1-64)</small>
+            </div>
+            
+            <div class="form-group">
+              <label for="verificationCount">Verification Frame Count</label>
+              <input type="number" id="verificationCount" min="1" max="10" step="1" value="3">
+              <small class="help-text">Number of consecutive identical frames required (1-10)</small>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="ssimThreshold">SSIM Similarity Threshold</label>
+              <input type="number" id="ssimThreshold" min="0.9" max="1.0" step="0.001" value="0.999">
+              <small class="help-text">Higher values require more similarity (0.9-1.0)</small>
+            </div>
+            
+            <div class="form-group">
+              <label for="pixelChangeRatioThreshold">Pixel Change Ratio Threshold</label>
+              <input type="number" id="pixelChangeRatioThreshold" min="0.001" max="0.1" step="0.001" value="0.005">
+              <small class="help-text">Lower values are more sensitive (0.001-0.1)</small>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="sizeIdenticalThreshold">Size Identical Threshold</label>
+              <input type="number" id="sizeIdenticalThreshold" min="0.0001" max="0.01" step="0.0001" value="0.0005">
+              <small class="help-text">File size difference for identical images (0.0001-0.01)</small>
+            </div>
+            
+            <div class="form-group">
+              <label for="sizeDiffThreshold">Size Difference Threshold</label>
+              <input type="number" id="sizeDiffThreshold" min="0.01" max="0.5" step="0.01" value="0.05">
+              <small class="help-text">File size difference for different images (0.01-0.5)</small>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="modal-footer">
         <button id="btnSaveAdvanced" class="primary-button">Save Settings</button>

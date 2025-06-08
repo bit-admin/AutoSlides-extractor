@@ -29,6 +29,15 @@ const btnCloseAdvanced = document.getElementById('btnCloseAdvanced');
 const btnSaveAdvanced = document.getElementById('btnSaveAdvanced');
 const btnCancelAdvanced = document.getElementById('btnCancelAdvanced');
 
+// Advanced threshold settings elements
+const enableMultiCore = document.getElementById('enableMultiCore');
+const hammingThreshold = document.getElementById('hammingThreshold');
+const ssimThreshold = document.getElementById('ssimThreshold');
+const pixelChangeRatioThreshold = document.getElementById('pixelChangeRatioThreshold');
+const verificationCount = document.getElementById('verificationCount');
+const sizeIdenticalThreshold = document.getElementById('sizeIdenticalThreshold');
+const sizeDiffThreshold = document.getElementById('sizeDiffThreshold');
+
 // Global variable
 let selectedVideoPath = '';
 let videoQueue = []; // Video queue
@@ -58,6 +67,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     inputCheckInterval.value = config.checkInterval || 2;
     comparisonMethod.value = config.comparisonMethod || 'default';
     enableDoubleVerification.checked = config.enableDoubleVerification !== false;
+    
+    // Load threshold settings
+    enableMultiCore.checked = config.enableMultiCore !== false;
+    hammingThreshold.value = config.hammingThreshold || 30;
+    ssimThreshold.value = config.ssimThreshold || 0.95;
+    pixelChangeRatioThreshold.value = config.pixelChangeRatioThreshold || 0.05;
+    verificationCount.value = config.verificationCount || 3;
+    sizeIdenticalThreshold.value = config.sizeIdenticalThreshold || 0.99;
+    sizeDiffThreshold.value = config.sizeDiffThreshold || 0.1;
   } catch (error) {
     console.error('Failed to load configuration:', error);
   }
@@ -175,6 +193,23 @@ function showAdvancedSettings() {
   const modalCheckbox = advancedSettingsModal.querySelector('#enableDoubleVerification');
   modalCheckbox.checked = enableDoubleVerification.checked;
   
+  // Load threshold settings into modal controls
+  const modalEnableMultiCore = advancedSettingsModal.querySelector('#enableMultiCore');
+  const modalHammingThreshold = advancedSettingsModal.querySelector('#hammingThreshold');
+  const modalSsimThreshold = advancedSettingsModal.querySelector('#ssimThreshold');
+  const modalPixelChangeRatioThreshold = advancedSettingsModal.querySelector('#pixelChangeRatioThreshold');
+  const modalVerificationCount = advancedSettingsModal.querySelector('#verificationCount');
+  const modalSizeIdenticalThreshold = advancedSettingsModal.querySelector('#sizeIdenticalThreshold');
+  const modalSizeDiffThreshold = advancedSettingsModal.querySelector('#sizeDiffThreshold');
+  
+  if (modalEnableMultiCore) modalEnableMultiCore.checked = enableMultiCore.checked;
+  if (modalHammingThreshold) modalHammingThreshold.value = hammingThreshold.value;
+  if (modalSsimThreshold) modalSsimThreshold.value = ssimThreshold.value;
+  if (modalPixelChangeRatioThreshold) modalPixelChangeRatioThreshold.value = pixelChangeRatioThreshold.value;
+  if (modalVerificationCount) modalVerificationCount.value = verificationCount.value;
+  if (modalSizeIdenticalThreshold) modalSizeIdenticalThreshold.value = sizeIdenticalThreshold.value;
+  if (modalSizeDiffThreshold) modalSizeDiffThreshold.value = sizeDiffThreshold.value;
+  
   advancedSettingsModal.style.display = 'flex';
   
   // Focus the modal for keyboard events
@@ -190,8 +225,24 @@ async function saveAdvancedSettings() {
     // Get the checkbox from the modal
     const modalCheckbox = advancedSettingsModal.querySelector('#enableDoubleVerification');
     
-    // Update the main checkbox (though it's not visible now)
+    // Get threshold settings from modal
+    const modalEnableMultiCore = advancedSettingsModal.querySelector('#enableMultiCore');
+    const modalHammingThreshold = advancedSettingsModal.querySelector('#hammingThreshold');
+    const modalSsimThreshold = advancedSettingsModal.querySelector('#ssimThreshold');
+    const modalPixelChangeRatioThreshold = advancedSettingsModal.querySelector('#pixelChangeRatioThreshold');
+    const modalVerificationCount = advancedSettingsModal.querySelector('#verificationCount');
+    const modalSizeIdenticalThreshold = advancedSettingsModal.querySelector('#sizeIdenticalThreshold');
+    const modalSizeDiffThreshold = advancedSettingsModal.querySelector('#sizeDiffThreshold');
+    
+    // Update the main controls (though they're not visible now)
     enableDoubleVerification.checked = modalCheckbox.checked;
+    if (modalEnableMultiCore) enableMultiCore.checked = modalEnableMultiCore.checked;
+    if (modalHammingThreshold) hammingThreshold.value = modalHammingThreshold.value;
+    if (modalSsimThreshold) ssimThreshold.value = modalSsimThreshold.value;
+    if (modalPixelChangeRatioThreshold) pixelChangeRatioThreshold.value = modalPixelChangeRatioThreshold.value;
+    if (modalVerificationCount) verificationCount.value = modalVerificationCount.value;
+    if (modalSizeIdenticalThreshold) sizeIdenticalThreshold.value = modalSizeIdenticalThreshold.value;
+    if (modalSizeDiffThreshold) sizeDiffThreshold.value = modalSizeDiffThreshold.value;
     
     // Save the configuration
     await saveConfig();
@@ -225,7 +276,14 @@ async function saveConfig() {
       outputDir: inputOutputDir.value,
       checkInterval: parseFloat(inputCheckInterval.value),
       comparisonMethod: comparisonMethod.value,
-      enableDoubleVerification: enableDoubleVerification.checked
+      enableDoubleVerification: enableDoubleVerification.checked,
+      enableMultiCore: enableMultiCore.checked,
+      hammingThreshold: parseFloat(hammingThreshold.value),
+      ssimThreshold: parseFloat(ssimThreshold.value),
+      pixelChangeRatioThreshold: parseFloat(pixelChangeRatioThreshold.value),
+      verificationCount: parseInt(verificationCount.value),
+      sizeIdenticalThreshold: parseFloat(sizeIdenticalThreshold.value),
+      sizeDiffThreshold: parseFloat(sizeDiffThreshold.value)
     };
     
     await window.electronAPI.saveConfig(config);
