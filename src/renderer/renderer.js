@@ -22,6 +22,13 @@ const enableDoubleVerification = document.getElementById('enableDoubleVerificati
 const queueSection = document.getElementById('queueSection');
 const queueList = document.getElementById('queueList');
 
+// Advanced settings elements
+const btnAdvancedSettings = document.getElementById('btnAdvancedSettings');
+const advancedSettingsModal = document.getElementById('advancedSettingsModal');
+const btnCloseAdvanced = document.getElementById('btnCloseAdvanced');
+const btnSaveAdvanced = document.getElementById('btnSaveAdvanced');
+const btnCancelAdvanced = document.getElementById('btnCancelAdvanced');
+
 // Global variable
 let selectedVideoPath = '';
 let videoQueue = []; // Video queue
@@ -135,6 +142,80 @@ btnReset.addEventListener('click', () => {
     clearQueue();
   }
   resetUI();
+});
+
+// Advanced Settings Modal Event Handlers
+btnAdvancedSettings.addEventListener('click', () => {
+  console.log('Advanced Settings button clicked');
+  showAdvancedSettings();
+});
+
+btnCloseAdvanced.addEventListener('click', () => {
+  hideAdvancedSettings();
+});
+
+btnCancelAdvanced.addEventListener('click', () => {
+  hideAdvancedSettings();
+});
+
+btnSaveAdvanced.addEventListener('click', () => {
+  saveAdvancedSettings();
+});
+
+// Close modal when clicking outside the modal content
+advancedSettingsModal.addEventListener('click', (e) => {
+  if (e.target === advancedSettingsModal) {
+    hideAdvancedSettings();
+  }
+});
+
+// Advanced Settings Functions
+function showAdvancedSettings() {
+  // Load current settings into the modal
+  const modalCheckbox = advancedSettingsModal.querySelector('#enableDoubleVerification');
+  modalCheckbox.checked = enableDoubleVerification.checked;
+  
+  advancedSettingsModal.style.display = 'flex';
+  
+  // Focus the modal for keyboard events
+  advancedSettingsModal.focus();
+}
+
+function hideAdvancedSettings() {
+  advancedSettingsModal.style.display = 'none';
+}
+
+async function saveAdvancedSettings() {
+  try {
+    // Get the checkbox from the modal
+    const modalCheckbox = advancedSettingsModal.querySelector('#enableDoubleVerification');
+    
+    // Update the main checkbox (though it's not visible now)
+    enableDoubleVerification.checked = modalCheckbox.checked;
+    
+    // Save the configuration
+    await saveConfig();
+    
+    // Close the modal
+    hideAdvancedSettings();
+    
+    // Show a brief status message
+    const originalStatus = statusText.textContent;
+    statusText.textContent = 'Advanced settings saved';
+    setTimeout(() => {
+      statusText.textContent = originalStatus;
+    }, 2000);
+  } catch (error) {
+    console.error('Failed to save advanced settings:', error);
+    statusText.textContent = 'Failed to save advanced settings';
+  }
+}
+
+// Keyboard event handling for the modal
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && advancedSettingsModal.style.display === 'flex') {
+    hideAdvancedSettings();
+  }
 });
 
 // Save configuration

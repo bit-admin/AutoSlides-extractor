@@ -491,6 +491,151 @@ footer {
   font-style: italic;
 }
 
+/* Section Header */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-header h2 {
+  margin-bottom: 0;
+}
+
+.advanced-settings-button {
+  background: none;
+  border: none;
+  color: #6c757d;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  position: relative;
+}
+
+.advanced-settings-button:hover {
+  color: #495057;
+  text-decoration: underline;
+  transform: none;
+  box-shadow: none;
+  filter: none;
+}
+
+/* Modal Styles */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  outline: none;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  min-width: 400px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow: hidden;
+  animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #eaedf3;
+  background-color: #f8f9fa;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6c757d;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.close-button:hover {
+  background-color: #e9ecef;
+  color: #495057;
+  transform: none;
+  box-shadow: none;
+}
+
+.modal-body {
+  padding: 24px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #eaedf3;
+  background-color: #f8f9fa;
+}
+
+.setting-description {
+  font-size: 12px;
+  color: #6c757d;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* Modal checkbox styling */
+.modal-body .checkbox-group {
+  margin-bottom: 16px;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.modal-body .checkbox-group:last-child {
+  margin-bottom: 0;
+}
+
 @media (prefers-color-scheme: dark) {
   body {
     background-color: #1a202c;
@@ -721,5 +866,74 @@ footer {
   
   .queue-empty {
     color: #cbd5e0;
+  }
+  
+  /* Advanced Settings Button for dark mode */
+  .advanced-settings-button {
+    color: #cbd5e0;
+  }
+  
+  .advanced-settings-button:hover {
+    color: #e2e8f0;
+  }
+  
+  .advanced-settings-button::after {
+    background-color: #4a5568;
+    color: #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+  
+  /* Modal styles for dark mode */
+  .modal {
+    background-color: rgba(0, 0, 0, 0.7);
+  }
+  
+  .modal-content {
+    background-color: #2d3748;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  }
+  
+  .modal-header {
+    background-color: #1a202c;
+    border-bottom-color: #4a5568;
+  }
+  
+  .modal-header h3 {
+    color: #e2e8f0;
+  }
+  
+  .close-button {
+    color: #cbd5e0;
+  }
+  
+  .close-button:hover {
+    background-color: #4a5568;
+    color: #e2e8f0;
+  }
+  
+  .modal-body {
+    background-color: #2d3748;
+  }
+  
+  .modal-footer {
+    background-color: #1a202c;
+    border-top-color: #4a5568;
+  }
+  
+  .setting-description {
+    color: #cbd5e0;
+  }
+  
+  .modal-body .checkbox-group {
+    background-color: #1a202c;
+    border-color: #4a5568;
+  }
+  
+  .modal-body .checkbox-group input[type="checkbox"] {
+    accent-color: #4299e1;
+  }
+  
+  .modal-body .checkbox-group label {
+    color: #e2e8f0;
   }
 }

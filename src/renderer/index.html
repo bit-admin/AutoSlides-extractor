@@ -11,7 +11,13 @@
   <div class="container">
     <main>
       <section class="input-section">
-        <h2>Extractor Configuration</h2>
+        <div class="section-header">
+          <h2>Extractor Configuration</h2>
+          <button id="btnAdvancedSettings" class="advanced-settings-button">
+            Advanced Settings
+          </button>
+        </div>
+        
         <div class="form-group">
           <label for="inputVideo">Video File</label>
           <div class="input-with-button">
@@ -41,11 +47,6 @@
               <option value="basic">Basic (Pixel)</option>
             </select>
           </div>
-        </div>
-
-        <div class="form-group checkbox-group">
-          <input type="checkbox" id="enableDoubleVerification" checked>
-          <label for="enableDoubleVerification">Enable Double Verification</label>
         </div>
       </section>
       
@@ -111,6 +112,26 @@
     <footer>
       <p>Copyright © 2025 AutoSlides. All Rights Reserved</p>
     </footer>
+  </div>
+  
+  <!-- Advanced Settings Modal -->
+  <div id="advancedSettingsModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Advanced Settings</h3>
+        <button id="btnCloseAdvanced" class="close-button">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group checkbox-group">
+          <input type="checkbox" id="enableDoubleVerification" checked>
+          <label for="enableDoubleVerification">Enable Double Verification</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnSaveAdvanced" class="primary-button">Save Settings</button>
+        <button id="btnCancelAdvanced" class="secondary-button">Cancel</button>
+      </div>
+    </div>
   </div>
   
   <script src="renderer.js"></script>

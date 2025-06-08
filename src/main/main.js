@@ -17,7 +17,7 @@ const PIXEL_CHANGE_RATIO_THRESHOLD = 0.005;  // Base comparison method's change 
 const PIXEL_DIFF_THRESHOLD = 30;      // Pixel difference threshold
 const SSIM_C1_FACTOR = 0.01;          // C1 factor in SSIM calculation
 const SSIM_C2_FACTOR = 0.03;          // C2 factor in SSIM calculation
-const VERIFICATION_COUNT = 2;         // The number of consecutive identical frames required for secondary verification
+const VERIFICATION_COUNT = 4;         // The number of consecutive identical frames required for secondary verification
 const SIZE_IDENTICAL_THRESHOLD = 0.0005; // 0.05% file size difference threshold for identical images
 const SIZE_DIFF_THRESHOLD = 0.05;     // 5% file size difference threshold for different images
 
@@ -87,7 +87,7 @@ const defaultConfig = {
   },
   comparisonMethod: 'default',
   enableDoubleVerification: true,
-  verificationCount: 2
+  verificationCount: 3
 };
 
 // Ensure the directory exists
