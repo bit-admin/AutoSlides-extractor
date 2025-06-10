@@ -40,10 +40,10 @@ const sizeDiffThreshold = document.getElementById('sizeDiffThreshold');
 
 // Post-processing elements
 const enablePostProcessing = document.getElementById('enablePostProcessing');
-const excludeHashesTable = document.getElementById('excludeHashesTable');
-const excludeHashesTableBody = document.getElementById('excludeHashesTableBody');
-const btnSelectImageHash = document.getElementById('btnSelectImageHash');
-const btnAddCustomHash = document.getElementById('btnAddCustomHash');
+const excludeFingerprintsTable = document.getElementById('excludeFingerprintsTable');
+const excludeFingerprintsTableBody = document.getElementById('excludeFingerprintsTableBody');
+const btnSelectImageFingerprint = document.getElementById('btnSelectImageFingerprint');
+const btnTestSimilarity = document.getElementById('btnTestSimilarity');
 const btnSelectSlidesDir = document.getElementById('btnSelectSlidesDir');
 const btnRunPostProcess = document.getElementById('btnRunPostProcess');
 
@@ -60,7 +60,6 @@ let extractedCount = 0;
 let timerInterval = null;
 
 // Post-processing variables
-let excludeHashes = ['c27e1de6798fc280']; // Default exclude hash
 let selectedSlidesDir = '';
 
 // Progress Control Related Variables
@@ -93,25 +92,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load post-processing settings
     enablePostProcessing.checked = config.enablePostProcessing !== false;
     
-    // Handle both old format (string array) and new format (object array)
-    const defaultExcludeHashes = []; // Start with empty array for testing
-    if (config.excludeHashes) {
-      if (Array.isArray(config.excludeHashes) && config.excludeHashes.length > 0) {
-        if (typeof config.excludeHashes[0] === 'string') {
-          // Convert old format to new format
-          excludeHashes = config.excludeHashes.map(hash => ({ hash, threshold: 0 }));
-        } else {
-          // Already in new format
-          excludeHashes = config.excludeHashes;
-        }
-      } else {
-        excludeHashes = defaultExcludeHashes;
-      }
-    } else {
-      excludeHashes = defaultExcludeHashes;
-    }
-    
-    updateExcludeHashesList();
+    // Initialize fingerprint display (data will be loaded from API)
+    await updateExcludeFingerprintsList();
   } catch (error) {
     console.error('Failed to load configuration:', error);
   }
@@ -224,30 +206,31 @@ advancedSettingsModal.addEventListener('click', (e) => {
 });
 
 // Post-processing Event Handlers
-btnSelectImageHash.addEventListener('click', async () => {
+btnSelectImageFingerprint.addEventListener('click', async () => {
   try {
     const imagePath = await window.electronAPI.selectImageFile();
     if (imagePath) {
-      statusText.textContent = 'Calculating image hash...';
-      const result = await window.electronAPI.calculateImageHash(imagePath);
-      if (result && result.hash) {
-        addExcludeHash(result.hash);
-        statusText.textContent = `Hash calculated and added: ${result.hash}`;
+      statusText.textContent = 'Calculating SSIM fingerprint...';
+      const result = await window.electronAPI.calculateImageSSIMFingerprint({
+        imagePath,
+        store: true,
+        name: `Fingerprint_${Date.now()}`,
+        threshold: 0.85
+      });
+      if (result && result.success && result.id) {
+        await addExcludeFingerprint(result.id, result.metadata.threshold);
+        statusText.textContent = `Fingerprint calculated and added: ${result.metadata.name}`;
         setTimeout(() => {
           statusText.textContent = 'Ready';
         }, 3000);
       } else {
-        statusText.textContent = 'Failed to calculate image hash';
+        statusText.textContent = 'Failed to calculate fingerprint';
       }
     }
   } catch (error) {
-    console.error('Failed to calculate image hash:', error);
-    statusText.textContent = 'Error calculating image hash';
+    console.error('Failed to calculate image fingerprint:', error);
+    statusText.textContent = 'Error calculating image fingerprint';
   }
-});
-
-btnAddCustomHash.addEventListener('click', () => {
-  addNewExcludeHash();
 });
 
 btnSelectSlidesDir.addEventListener('click', async () => {
@@ -270,8 +253,15 @@ btnRunPostProcess.addEventListener('click', async () => {
     return;
   }
   
-  if (excludeHashes.length === 0) {
-    statusText.textContent = 'No exclude hashes configured';
+  // Get current exclude fingerprints from API
+  try {
+    const fingerprintsResult = await window.electronAPI.getExcludeFingerprints();
+    if (!fingerprintsResult.success || fingerprintsResult.excludeFingerprints.length === 0) {
+      statusText.textContent = 'No exclude fingerprints configured';
+      return;
+    }
+  } catch (error) {
+    statusText.textContent = 'Error checking fingerprints configuration';
     return;
   }
   
@@ -279,7 +269,8 @@ btnRunPostProcess.addEventListener('click', async () => {
     btnRunPostProcess.disabled = true;
     statusText.textContent = 'Running post-processing...';
     
-    const result = await window.electronAPI.postProcessSlides(selectedSlidesDir, excludeHashes);
+    // Pass empty array since the backend will use config.excludeFingerprints
+    const result = await window.electronAPI.postProcessSlides(selectedSlidesDir, []);
     
     if (result.success) {
       statusText.textContent = `Post-processing completed. Removed ${result.removedCount} similar images.`;
@@ -324,8 +315,8 @@ function showAdvancedSettings() {
   if (modalSizeDiffThreshold) modalSizeDiffThreshold.value = sizeDiffThreshold.value;
   if (modalEnablePostProcessing) modalEnablePostProcessing.checked = enablePostProcessing.checked;
   
-  // Update exclude hashes list in modal
-  updateExcludeHashesList();
+  // Update exclude fingerprints list in modal
+  updateExcludeFingerprintsList();
   
   advancedSettingsModal.style.display = 'flex';
   
@@ -405,8 +396,8 @@ async function saveConfig() {
       verificationCount: parseInt(verificationCount.value),
       sizeIdenticalThreshold: parseFloat(sizeIdenticalThreshold.value),
       sizeDiffThreshold: parseFloat(sizeDiffThreshold.value),
-      enablePostProcessing: enablePostProcessing.checked,
-      excludeHashes: excludeHashes
+      enablePostProcessing: enablePostProcessing.checked
+      // Note: excludeFingerprints is now managed through the index system
     };
     
     await window.electronAPI.saveConfig(config);
@@ -416,302 +407,201 @@ async function saveConfig() {
 }
 
 // Post-processing utility functions
-function updateExcludeHashesList() {
-  const tableBody = document.getElementById('excludeHashesTableBody');
+async function updateExcludeFingerprintsList() {
+  const tableBody = document.getElementById('excludeFingerprintsTableBody');
   tableBody.innerHTML = '';
   
-  excludeHashes.forEach((excludeItem, index) => {
-    const row = document.createElement('tr');
-    row.setAttribute('data-index', index);
+  try {
+    // Get exclude fingerprints with complete metadata from index
+    const result = await window.electronAPI.getExcludeFingerprints();
     
-    // Hash value cell
-    const hashCell = document.createElement('td');
-    hashCell.className = 'hash-cell';
+    if (result.success) {
+      const excludeFingerprints = result.excludeFingerprints;
+      
+      excludeFingerprints.forEach((fingerprintData, index) => {
+        const row = document.createElement('tr');
+        row.setAttribute('data-fingerprint-id', fingerprintData.id);
+        row.setAttribute('data-index', index);
+        
+        // Fingerprint name cell
+        const nameCell = document.createElement('td');
+        nameCell.className = 'fingerprint-name-cell';
+        
+        const nameDisplay = document.createElement('div');
+        nameDisplay.className = 'fingerprint-name-display';
+        const fullName = fingerprintData.name || fingerprintData.id || 'Unknown Fingerprint';
+        
+        // Truncate long names with ellipsis
+        if (fullName.length > 25) {
+          nameDisplay.textContent = fullName.substring(0, 22) + '...';
+          nameDisplay.title = fullName; // Show full name on hover
+        } else {
+          nameDisplay.textContent = fullName;
+          nameDisplay.title = `Fingerprint ID: ${fingerprintData.id}`;
+        }
+        
+        nameCell.appendChild(nameDisplay);
+        
+        // Threshold cell  
+        const thresholdCell = document.createElement('td');
+        thresholdCell.className = 'threshold-cell';
+        
+        const thresholdDisplay = document.createElement('div');
+        thresholdDisplay.className = 'threshold-display';
+        const thresholdValue = fingerprintData.threshold || 0.85;
+        thresholdDisplay.textContent = thresholdValue.toFixed(2);
+        thresholdDisplay.title = 'Click to edit SSIM similarity threshold (0.0 - 1.0)';
+        
+        thresholdCell.appendChild(thresholdDisplay);
+        
+        // Actions cell
+        const actionsCell = document.createElement('td');
+        actionsCell.className = 'actions-cell';
+        
+        // Edit button with SVG icon
+        const editBtn = document.createElement('button');
+        editBtn.className = 'row-action-button edit';
+        editBtn.title = 'Edit fingerprint';
+        editBtn.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+      `;
+      editBtn.onclick = () => editExcludeFingerprint(fingerprintData.id);
+      
+      // Delete button with SVG icon
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'row-action-button delete';
+      deleteBtn.title = 'Remove fingerprint';
+      deleteBtn.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3,6 5,6 21,6"/>
+          <path d="M19,6v14a2,2,0,0,1-2-2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2v2"/>
+          <line x1="10" y1="11" x2="10" y2="17"/>
+          <line x1="14" y1="11" x2="14" y2="17"/>
+        </svg>
+      `;
+      deleteBtn.onclick = () => removeExcludeFingerprint(fingerprintData.id);
+      
+      actionsCell.appendChild(editBtn);
+      actionsCell.appendChild(deleteBtn);
+      
+      row.appendChild(nameCell);
+      row.appendChild(thresholdCell);
+      row.appendChild(actionsCell);
+      tableBody.appendChild(row);
+    });
     
-    const hashDisplay = document.createElement('div');
-    hashDisplay.className = 'hash-display';
-    const hashValue = typeof excludeItem === 'string' ? excludeItem : excludeItem.hash;
-    
-    if (hashValue) {
-      hashDisplay.textContent = hashValue;
-      hashDisplay.title = 'Click to edit';
-    } else {
-      hashDisplay.textContent = 'Enter hash value...';
-      hashDisplay.className = 'hash-display empty';
-      hashDisplay.title = 'Click to add hash';
+    // Add empty state row if no fingerprints
+    if (excludeFingerprints.length === 0) {
+      const emptyRow = document.createElement('tr');
+      const emptyCell = document.createElement('td');
+      emptyCell.colSpan = 3;
+      emptyCell.className = 'fingerprint-empty';
+      emptyCell.textContent = 'No exclude fingerprints configured';
+      emptyRow.appendChild(emptyCell);
+      tableBody.appendChild(emptyRow);
     }
+  } else {
+    console.error('Failed to load exclude fingerprints:', result.error || 'Unknown error');
     
-    hashCell.appendChild(hashDisplay);
-    
-    // Threshold cell  
-    const thresholdCell = document.createElement('td');
-    thresholdCell.className = 'threshold-cell';
-    
-    const thresholdDisplay = document.createElement('div');
-    thresholdDisplay.className = 'threshold-display';
-    const thresholdValue = typeof excludeItem === 'object' ? excludeItem.threshold : 0;
-    thresholdDisplay.textContent = thresholdValue.toString();
-    thresholdDisplay.title = 'Click to edit threshold';
-    
-    thresholdCell.appendChild(thresholdDisplay);
-    
-    // Actions cell
-    const actionsCell = document.createElement('td');
-    actionsCell.className = 'actions-cell';
-    
-    // Edit button with SVG icon
-    const editBtn = document.createElement('button');
-    editBtn.className = 'row-action-button';
-    editBtn.title = 'Edit hash';
-    editBtn.innerHTML = `
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-      </svg>
-    `;
-    editBtn.onclick = () => editExcludeHash(index);
-    
-    // Delete button with SVG icon
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'row-action-button delete';
-    deleteBtn.title = 'Remove hash';
-    deleteBtn.innerHTML = `
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="3,6 5,6 21,6"/>
-        <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2v2"/>
-        <line x1="10" y1="11" x2="10" y2="17"/>
-        <line x1="14" y1="11" x2="14" y2="17"/>
-      </svg>
-    `;
-    deleteBtn.onclick = () => removeExcludeHash(index);
-    
-    actionsCell.appendChild(editBtn);
-    actionsCell.appendChild(deleteBtn);
-    
-    row.appendChild(hashCell);
-    row.appendChild(thresholdCell);
-    row.appendChild(actionsCell);
-    tableBody.appendChild(row);
-  });
+    // Show error in table
+    const errorRow = document.createElement('tr');
+    const errorCell = document.createElement('td');
+    errorCell.colSpan = 3;
+    errorCell.className = 'fingerprint-error';
+    errorCell.textContent = 'Error loading fingerprints. Please try again.';
+    errorRow.appendChild(errorCell);
+    tableBody.appendChild(errorRow);
+  }
+} catch (error) {
+  console.error('Error updating exclude fingerprints list:', error);
   
-  // Add empty state row if no hashes
-  if (excludeHashes.length === 0) {
-    const emptyRow = document.createElement('tr');
-    const emptyCell = document.createElement('td');
-    emptyCell.colSpan = 3;
-    emptyCell.className = 'hash-empty';
-    emptyCell.textContent = 'No exclude hashes configured';
-    emptyCell.style.textAlign = 'center';
-    emptyCell.style.color = '#6c757d';
-    emptyCell.style.fontStyle = 'italic';
-    emptyCell.style.padding = '20px';
-    emptyRow.appendChild(emptyCell);
-    tableBody.appendChild(emptyRow);
-  }
+  // Show error in table
+  const errorRow = document.createElement('tr');
+  const errorCell = document.createElement('td');
+  errorCell.colSpan = 3;
+  errorCell.className = 'fingerprint-error';
+  errorCell.textContent = 'Error loading fingerprints. Please try again.';
+  errorRow.appendChild(errorCell);
+  tableBody.appendChild(errorRow);
+}
 }
 
-function addExcludeHash(hash) {
-  // Check if hash already exists
-  const existingIndex = excludeHashes.findIndex(item => 
-    (typeof item === 'string' ? item : item.hash) === hash
-  );
-  
-  if (existingIndex === -1) {
-    excludeHashes.push({ hash: hash, threshold: 0 }); // Default threshold is 0
-    updateExcludeHashesList();
-    // Auto-save configuration
-    saveConfig();
-  }
-}
-
-function removeExcludeHash(index) {
-  if (index >= 0 && index < excludeHashes.length) {
-    const hashValue = typeof excludeHashes[index] === 'string' ? excludeHashes[index] : excludeHashes[index].hash;
-    
-    excludeHashes.splice(index, 1);
-    updateExcludeHashesList();
-    
-    // Only save config if we're removing a valid hash (not an empty one)
-    if (hashValue) {
-      saveConfig();
-    }
-  }
-}
-
-function editExcludeHash(index) {
-  if (index >= 0 && index < excludeHashes.length) {
-    const tableBody = document.getElementById('excludeHashesTableBody');
-    const row = tableBody.querySelector(`tr[data-index="${index}"]`);
-    
-    if (row) {
-      // Toggle editing state
-      if (row.classList.contains('editing')) {
-        // Save changes
-        saveHashEdit(index, row);
+async function addExcludeFingerprint(fingerprintId, threshold = 0.85) {
+  try {
+    // Check if fingerprint already exists in exclude list
+    const excludeResult = await window.electronAPI.getExcludeFingerprints();
+    if (excludeResult.success) {
+      const existingFingerprint = excludeResult.excludeFingerprints.find(item => item.id === fingerprintId);
+      
+      if (!existingFingerprint) {
+        // Add to exclude list with backend API
+        await window.electronAPI.addFingerprintToExcludes({ id: fingerprintId, threshold });
+        
+        // Update display
+        await updateExcludeFingerprintsList();
+        
+        // Auto-save local configuration
+        await saveConfig();
+        return true;
       } else {
-        // Enter edit mode
-        enterEditMode(index, row);
+        console.log('Fingerprint already exists in exclude list');
+        return false;
       }
+    } else {
+      console.error('Failed to get exclude fingerprints:', excludeResult);
+      return false;
     }
+  } catch (error) {
+    console.error('Failed to add exclude fingerprint:', error);
+    return false;
   }
 }
 
-function enterEditMode(index, row) {
-  const currentHash = typeof excludeHashes[index] === 'string' ? excludeHashes[index] : excludeHashes[index].hash;
-  const currentThreshold = typeof excludeHashes[index] === 'object' ? excludeHashes[index].threshold : 0;
-  
-  // Mark row as editing
-  row.classList.add('editing');
-  
-  // Replace hash display with input
-  const hashCell = row.querySelector('.hash-cell');
-  const hashDisplay = hashCell.querySelector('.hash-display');
-  
-  const hashInput = document.createElement('input');
-  hashInput.type = 'text';
-  hashInput.className = 'hash-input';
-  hashInput.value = currentHash || '';
-  hashInput.maxLength = 16;
-  hashInput.placeholder = 'Enter 16-chars hash';
-  
-  hashCell.innerHTML = '';
-  hashCell.appendChild(hashInput);
-  
-  // Replace threshold display with input
-  const thresholdCell = row.querySelector('.threshold-cell');
-  const thresholdDisplay = thresholdCell.querySelector('.threshold-display');
-  
-  const thresholdInput = document.createElement('input');
-  thresholdInput.type = 'number';
-  thresholdInput.className = 'threshold-input-edit';
-  thresholdInput.value = currentThreshold;
-  thresholdInput.min = '0';
-  thresholdInput.max = '64';
-  thresholdInput.step = '1';
-  thresholdInput.placeholder = 'Threshold';
-  
-  thresholdCell.innerHTML = '';
-  thresholdCell.appendChild(thresholdInput);
-  
-  // Update buttons in actions cell
-  const actionsCell = row.querySelector('.actions-cell');
-  const editBtn = actionsCell.querySelector('.row-action-button:first-child');
-  const deleteBtn = actionsCell.querySelector('.row-action-button.delete');
-  
-  // Change edit button to save
-  editBtn.className = 'row-action-button save';
-  editBtn.title = 'Save changes';
-  editBtn.innerHTML = `
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <polyline points="20,6 9,17 4,12"/>
-    </svg>
-  `;
-  
-  // Change delete button to cancel
-  deleteBtn.className = 'row-action-button cancel';
-  deleteBtn.title = 'Cancel editing';
-  deleteBtn.innerHTML = `
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <line x1="18" y1="6" x2="6" y2="18"/>
-      <line x1="6" y1="6" x2="18" y2="18"/>
-    </svg>
-  `;
-  
-  // Focus the hash input
-  hashInput.focus();
-  hashInput.select();
-  
-  // Handle Enter key to save
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      saveHashEdit(index, row);
-    } else if (e.key === 'Escape') {
-      cancelHashEdit(index, row);
-    }
-  };
-  
-  hashInput.addEventListener('keypress', handleKeyPress);
-  thresholdInput.addEventListener('keypress', handleKeyPress);
-}
-
-function saveHashEdit(index, row) {
-  const hashInput = row.querySelector('.hash-input');
-  const thresholdInput = row.querySelector('.threshold-input-edit');
-  
-  const newHash = hashInput.value.toLowerCase().trim();
-  const newThreshold = parseInt(thresholdInput.value) || 0;
-  
-  // Validate hash
-  if (newHash.length !== 16 || !/^[0-9a-f]+$/.test(newHash)) {
-    alert('Please enter a valid 16-character hexadecimal hash value');
-    hashInput.focus();
-    return;
+async function removeExcludeFingerprint(fingerprintId) {
+  try {
+    // Remove from backend configuration
+    await window.electronAPI.removeFingerprintFromExcludes(fingerprintId);
+    
+    // Update the display
+    await updateExcludeFingerprintsList();
+    
+    // Auto-save local configuration
+    await saveConfig();
+    
+    statusText.textContent = `Removed fingerprint: ${fingerprintId}`;
+    setTimeout(() => {
+      statusText.textContent = 'Ready';
+    }, 2000);
+  } catch (error) {
+    console.error('Failed to remove exclude fingerprint:', error);
+    statusText.textContent = 'Failed to remove fingerprint';
   }
-  
-  // Validate threshold
-  if (newThreshold < 0 || newThreshold > 64) {
-    alert('Threshold must be between 0 and 64');
-    thresholdInput.focus();
-    return;
-  }
-  
-  // Check if hash already exists (excluding current index)
-  const existingIndex = excludeHashes.findIndex((item, idx) => 
-    idx !== index && (typeof item === 'string' ? item : item.hash) === newHash
-  );
-  
-  if (existingIndex !== -1) {
-    alert('This hash already exists in the exclude list');
-    hashInput.focus();
-    return;
-  }
-  
-  // Update the hash and threshold
-  excludeHashes[index] = { hash: newHash, threshold: newThreshold };
-  
-  // Exit edit mode and refresh
-  exitEditMode(row);
-  updateExcludeHashesList();
-  saveConfig();
-}
-
-function cancelHashEdit(index, row) {
-  exitEditMode(row);
-  updateExcludeHashesList();
-}
-
-function exitEditMode(row) {
-  row.classList.remove('editing');
-}
-
-function addNewExcludeHash() {
-  // Add a new empty hash entry for editing
-  const newHash = { hash: '', threshold: 0 };
-  const newIndex = excludeHashes.length;
-  excludeHashes.push(newHash);
-  
-  // Update the list to show the new row
-  updateExcludeHashesList();
-  
-  // Immediately enter edit mode for the new row
-  setTimeout(() => {
-    const tableBody = document.getElementById('excludeHashesTableBody');
-    const newRow = tableBody.querySelector(`tr[data-index="${newIndex}"]`);
-    if (newRow) {
-      enterEditMode(newIndex, newRow);
-    }
-  }, 10);
 }
 
 // Automatic post-processing after video completion
 async function runAutomaticPostProcessing(slidesDir) {
-  if (!enablePostProcessing.checked || excludeHashes.length === 0) {
+  if (!enablePostProcessing.checked) {
+    return { success: true, skipped: true };
+  }
+  
+  // Check if there are any exclude fingerprints configured
+  try {
+    const fingerprintsResult = await window.electronAPI.getExcludeFingerprints();
+    if (!fingerprintsResult.success || fingerprintsResult.excludeFingerprints.length === 0) {
+      return { success: true, skipped: true };
+    }
+  } catch (error) {
+    console.error('Error checking fingerprints for auto post-processing:', error);
     return { success: true, skipped: true };
   }
   
   try {
     statusText.textContent = 'Running automatic post-processing...';
-    const result = await window.electronAPI.postProcessSlides(slidesDir, excludeHashes);
+    // Pass empty array since the backend will use config.excludeFingerprints
+    const result = await window.electronAPI.postProcessSlides(slidesDir, []);
     
     if (result.success) {
       statusText.textContent = `Post-processing completed. Removed ${result.removedCount} similar images.`;
@@ -1241,3 +1131,305 @@ function sleep(ms) {
 
 // Make removeFromQueue available globally
 window.removeFromQueue = removeFromQueue;
+
+// Fingerprint editing functions
+function editExcludeFingerprint(fingerprintId) {
+  const tableBody = document.getElementById('excludeFingerprintsTableBody');
+  const row = tableBody.querySelector(`tr[data-fingerprint-id="${fingerprintId}"]`);
+  
+  if (row) {
+    // Toggle editing state
+    if (row.classList.contains('editing')) {
+      // Save changes
+      saveFingerprintEdit(fingerprintId, row);
+    } else {
+      // Enter edit mode
+      enterFingerprintEditMode(fingerprintId, row);
+    }
+  }
+}
+
+async function enterFingerprintEditMode(fingerprintId, row) {
+  try {
+    // Load current fingerprint metadata
+    const fingerprintData = await window.electronAPI.loadFingerprintById(fingerprintId);
+    
+    if (!fingerprintData.success) {
+      throw new Error('Failed to load fingerprint data');
+    }
+    
+    const currentName = fingerprintData.metadata.name || fingerprintId || 'Unknown Fingerprint';
+    const currentThreshold = fingerprintData.metadata.threshold || 0.85;
+    
+    // Mark row as editing
+    row.classList.add('editing');
+    
+    // Replace name display with input
+    const nameCell = row.querySelector('.fingerprint-name-cell');
+    const nameDisplay = nameCell.querySelector('.fingerprint-name-display');
+    
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'fingerprint-name-input';
+    nameInput.value = currentName;
+    nameInput.maxLength = 50;
+    nameInput.placeholder = 'Enter fingerprint name';
+    
+    nameCell.innerHTML = '';
+    nameCell.appendChild(nameInput);
+    
+    // Replace threshold display with input
+    const thresholdCell = row.querySelector('.threshold-cell');
+    const thresholdDisplay = thresholdCell.querySelector('.threshold-display');
+    
+    const thresholdInput = document.createElement('input');
+    thresholdInput.type = 'number';
+    thresholdInput.className = 'threshold-input-edit';
+    thresholdInput.value = currentThreshold;
+    thresholdInput.min = '0';
+    thresholdInput.max = '1';
+    thresholdInput.step = '0.01';
+    thresholdInput.placeholder = 'Threshold';
+    
+    thresholdCell.innerHTML = '';
+    thresholdCell.appendChild(thresholdInput);
+    
+    // Update buttons in actions cell
+    const actionsCell = row.querySelector('.actions-cell');
+    const editBtn = actionsCell.querySelector('.row-action-button.edit');
+    const deleteBtn = actionsCell.querySelector('.row-action-button.delete');
+    
+    // Change edit button to save
+    editBtn.className = 'row-action-button save';
+    editBtn.title = 'Save changes';
+    editBtn.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="20,6 9,17 4,12"/>
+    </svg>
+    `;
+    
+    // Change delete button to cancel
+    deleteBtn.className = 'row-action-button cancel';
+    deleteBtn.title = 'Cancel editing';
+    deleteBtn.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    `;
+    
+    // Update click handlers
+    editBtn.onclick = () => saveFingerprintEdit(fingerprintId, row);
+    deleteBtn.onclick = () => cancelFingerprintEdit(fingerprintId, row);
+    
+    // Focus on name input
+    nameInput.focus();
+    nameInput.select();
+  } catch (error) {
+    console.error('Error entering edit mode:', error);
+    statusText.textContent = 'Failed to enter edit mode';
+  }
+}
+
+async function saveFingerprintEdit(fingerprintId, row) {
+  const nameInput = row.querySelector('.fingerprint-name-input');
+  const thresholdInput = row.querySelector('.threshold-input-edit');
+  
+  const newName = nameInput.value.trim();
+  const newThreshold = parseFloat(thresholdInput.value) || 0.85;
+  
+  // Validate name
+  if (!newName || newName.length < 1) {
+    alert('Please enter a valid fingerprint name');
+    nameInput.focus();
+    return;
+  }
+  
+  // Validate threshold
+  if (newThreshold < 0 || newThreshold > 1) {
+    alert('Threshold must be between 0.0 and 1.0');
+    thresholdInput.focus();
+    return;
+  }
+  
+  try {
+    // Update the fingerprint metadata in the index
+    await window.electronAPI.updateFingerprint({ 
+      id: fingerprintId, 
+      name: newName,
+      threshold: newThreshold 
+    });
+    
+    // Exit edit mode and refresh
+    exitFingerprintEditMode(row);
+    await updateExcludeFingerprintsList();
+    await saveConfig();
+    
+    statusText.textContent = `Updated fingerprint: ${newName}`;
+    setTimeout(() => {
+      statusText.textContent = 'Ready';
+    }, 2000);
+  } catch (error) {
+    console.error('Failed to save fingerprint edit:', error);
+    statusText.textContent = 'Failed to save changes';
+    setTimeout(() => {
+      statusText.textContent = 'Ready';
+    }, 2000);
+  }
+}
+
+function cancelFingerprintEdit(fingerprintId, row) {
+  exitFingerprintEditMode(row);
+  updateExcludeFingerprintsList();
+}
+
+function exitFingerprintEditMode(row) {
+  row.classList.remove('editing');
+}
+
+// Similarity testing functionality
+btnTestSimilarity.addEventListener('click', async () => {
+  try {
+    // Check if there are any fingerprints to test against
+    const fingerprintsResult = await window.electronAPI.getExcludeFingerprints();
+    if (!fingerprintsResult.success || fingerprintsResult.excludeFingerprints.length === 0) {
+      statusText.textContent = 'No fingerprints configured for testing';
+      return;
+    }
+    
+    const excludeFingerprints = fingerprintsResult.excludeFingerprints;
+
+    const imagePath = await window.electronAPI.selectImageFile();
+    if (imagePath) {
+      statusText.textContent = 'Calculating fingerprint and testing similarity...';
+      
+      // Calculate fingerprint for the test image
+      const result = await window.electronAPI.calculateImageSSIMFingerprint({
+        imagePath,
+        store: false, // Don't store, just calculate for testing
+        threshold: 0.85
+      });
+      
+      if (result && result.success) {
+        let bestMatch = null;
+        let bestSimilarity = 0;
+        let matchCount = 0;
+        
+        // Test against all existing fingerprints
+        for (const excludeItem of excludeFingerprints) {
+          try {
+            // Load the stored fingerprint
+            const storedResult = await window.electronAPI.loadFingerprintById(excludeItem.id);
+            
+            if (storedResult.success) {
+              // Compare fingerprints
+              const similarity = await window.electronAPI.compareSSIMFingerprints({
+                fingerprint1: result.fingerprint,
+                fingerprint2: storedResult.fingerprint
+              });
+              
+              if (similarity.success) {
+                const similarityValue = similarity.similarity;
+                const threshold = excludeItem.threshold || 0.85;
+                
+                // Check if this is a match based on threshold
+                if (similarityValue >= threshold) {
+                  matchCount++;
+                }
+                
+                // Track best match
+                if (similarityValue > bestSimilarity) {
+                  bestSimilarity = similarityValue;
+                  bestMatch = {
+                    name: excludeItem.name || excludeItem.id,
+                    similarity: similarityValue,
+                    threshold: threshold,
+                    isMatch: similarityValue >= threshold
+                  };
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`Error testing against fingerprint ${excludeItem.id}:`, error);
+          }
+        }
+        
+        // Display results
+        const imageName = imagePath.split('/').pop();
+        if (bestMatch) {
+          const matchStatus = bestMatch.isMatch ? 'MATCH' : 'NO MATCH';
+          const matchStyle = bestMatch.isMatch ? 'color: #dc2626; font-weight: bold;' : 'color: #059669;';
+          
+          const resultMessage = `Test Results for "${imageName}":
+Best match: ${bestMatch.name}
+Similarity: ${(bestMatch.similarity * 100).toFixed(1)}%
+Threshold: ${(bestMatch.threshold * 100).toFixed(1)}%
+Status: ${matchStatus}
+Total matches: ${matchCount}/${excludeFingerprints.length}`;
+          
+          // Show results in a dialog
+          const dialog = document.createElement('div');
+          dialog.style.cssText = `
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: white; border: 2px solid #e2e8f0; border-radius: 8px;
+            padding: 20px; max-width: 400px; z-index: 1000;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            font-family: 'Inter', sans-serif;
+          `;
+          
+          dialog.innerHTML = `
+            <h3 style="margin: 0 0 15px 0; color: #2d3748; font-size: 16px;">Similarity Test Results</h3>
+            <div style="margin-bottom: 15px;">
+              <div style="margin-bottom: 8px;"><strong>Image:</strong> ${imageName}</div>
+              <div style="margin-bottom: 8px;"><strong>Best Match:</strong> ${bestMatch.name}</div>
+              <div style="margin-bottom: 8px;"><strong>Similarity:</strong> ${(bestMatch.similarity * 100).toFixed(1)}%</div>
+              <div style="margin-bottom: 8px;"><strong>Threshold:</strong> ${(bestMatch.threshold * 100).toFixed(1)}%</div>
+              <div style="margin-bottom: 8px; ${matchStyle}"><strong>Status:</strong> ${matchStatus}</div>
+              <div><strong>Matches Found:</strong> ${matchCount}/${excludeFingerprints.length}</div>
+            </div>
+            <button id="closeTestDialog" style="
+              background: #2c7be5; color: white; border: none; border-radius: 4px;
+              padding: 8px 16px; cursor: pointer; font-size: 14px;
+              float: right;
+            ">Close</button>
+            <div style="clear: both;"></div>
+          `;
+          
+          // Add backdrop
+          const backdrop = document.createElement('div');
+          backdrop.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 999;
+          `;
+          
+          document.body.appendChild(backdrop);
+          document.body.appendChild(dialog);
+          
+          // Close dialog handlers
+          const closeDialog = () => {
+            document.body.removeChild(dialog);
+            document.body.removeChild(backdrop);
+          };
+          
+          document.getElementById('closeTestDialog').onclick = closeDialog;
+          backdrop.onclick = closeDialog;
+          
+          statusText.textContent = `Similarity test completed - ${matchStatus}`;
+        } else {
+          statusText.textContent = 'Failed to find any valid fingerprints for comparison';
+        }
+        
+        // Reset status after delay
+        setTimeout(() => {
+          statusText.textContent = 'Ready';
+        }, 5000);
+        
+      } else {
+        statusText.textContent = 'Failed to calculate test image fingerprint';
+      }
+    }
+  } catch (error) {
+    console.error('Failed to test image similarity:', error);
+    statusText.textContent = 'Error testing image similarity';
+  }
+});

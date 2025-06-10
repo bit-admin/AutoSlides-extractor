@@ -64,7 +64,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Post-processing methods
   calculateImageHash: (imagePath) => ipcRenderer.invoke('calculate-image-hash', imagePath),
-  postProcessSlides: (slidesDir, excludeHashes) => ipcRenderer.invoke('post-process-slides', { slidesDir, excludeHashes }),
+  postProcessSlides: (slidesDir, excludeFingerprints) => ipcRenderer.invoke('post-process-slides', { slidesDir, excludeFingerprints }),
   selectImageFile: () => ipcRenderer.invoke('select-image-file'),
-  selectSlidesDir: () => ipcRenderer.invoke('select-slides-dir')
+  selectSlidesDir: () => ipcRenderer.invoke('select-slides-dir'),
+  
+  // SSIM fingerprint methods
+  calculateImageSSIMFingerprint: (options) => ipcRenderer.invoke('calculate-image-ssim-fingerprint', options),
+  compareSSIMFingerprints: (options) => ipcRenderer.invoke('compare-ssim-fingerprints', options),
+  storeImageFingerprint: (options) => ipcRenderer.invoke('store-image-fingerprint', options),
+  loadFingerprintById: (id) => ipcRenderer.invoke('load-fingerprint-by-id', id),
+  getAllFingerprints: () => ipcRenderer.invoke('get-all-fingerprints'),
+  getExcludeFingerprints: () => ipcRenderer.invoke('get-exclude-fingerprints'),
+  updateFingerprint: (options) => ipcRenderer.invoke('update-fingerprint', options),
+  deleteFingerprintById: (id) => ipcRenderer.invoke('delete-fingerprint-by-id', id),
+  addFingerprintToExcludes: (options) => ipcRenderer.invoke('add-fingerprint-to-excludes', options),
+  removeFingerprintFromExcludes: (id) => ipcRenderer.invoke('remove-fingerprint-from-excludes', id),
+  exportFingerprint: (options) => ipcRenderer.invoke('export-fingerprint', options),
+  importFingerprint: (options) => ipcRenderer.invoke('import-fingerprint', options),
+  openFingerprintStorageDir: () => ipcRenderer.invoke('open-fingerprint-storage-dir')
 });

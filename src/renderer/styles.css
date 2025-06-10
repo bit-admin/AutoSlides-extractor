@@ -1333,608 +1333,316 @@ body.dark-mode .help-text {
     border-color: #4a5568;
     background-color: #2d3748;
   }
-
-  .hash-list li {
-    background-color: #1a202c;
-    border-color: #4a5568;
-  }
 }
 
-/* Post-Processing Styles */
-.hash-table-container {
-  border: 1px solid #e1e5e9;
+/* ===== Fingerprint Table Styles ===== */
+.fingerprint-table-container {
+  background: #fff;
   border-radius: 8px;
-  background-color: #f8f9fa;
+  border: 1px solid #e2e8f0;
   overflow: hidden;
+  margin-top: 8px;
 }
 
-.hash-table {
+.fingerprint-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
 }
 
-.hash-table thead {
-  background-color: #f1f3f5;
+.fingerprint-table thead {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
 }
 
-.hash-table th {
-  padding: 8px 12px;
+.fingerprint-table th {
+  padding: 12px 16px;
   text-align: left;
   font-weight: 600;
   color: #495057;
-  border-bottom: 2px solid #e1e5e9;
+  border-bottom: 2px solid #dee2e6;
   font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.hash-table th:first-child {
-  width: 50%;
+.fingerprint-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f3f4;
+  vertical-align: middle;
 }
 
-.hash-table th:nth-child(2) {
-  width: 20%;
+.fingerprint-table tbody tr {
+  transition: background-color 0.15s ease;
 }
 
-.hash-table th:last-child {
-  width: 30%;
-  text-align: center;
-}
-
-.hash-table tbody tr {
-  border-bottom: 1px solid #e9ecef;
-  transition: background-color 0.2s;
-  height: 40px;
-}
-
-.hash-table tbody tr:hover {
+.fingerprint-table tbody tr:hover {
   background-color: #f8f9fa;
 }
 
-.hash-table tbody tr.editing {
-  background-color: #fff3cd;
+.fingerprint-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
-.hash-table td {
-  padding: 6px 12px;
-  vertical-align: middle;
-  height: 40px;
+/* Fingerprint name cell */
+.fingerprint-name-cell {
+  width: 40%;
 }
 
-.hash-table .hash-cell {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 11px;
-  color: #6c757d;
-  word-break: break-all;
-  line-height: 1.3;
+.fingerprint-name-display {
+  font-weight: 500;
+  color: #2d3748;
+  cursor: pointer;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.15s ease;
 }
 
-.hash-table .threshold-cell {
-  text-align: center;
+.fingerprint-name-display:hover {
+  color: #2c7be5;
 }
 
-.hash-table .actions-cell {
-  text-align: center;
+.fingerprint-name-display.editable {
+  border: 2px solid #2c7be5;
+  border-radius: 4px;
+  padding: 4px 8px;
+  background: #fff;
 }
 
-.hash-input {
+.fingerprint-name-input {
   width: 100%;
+  border: 2px solid #2c7be5;
+  border-radius: 4px;
   padding: 6px 8px;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 12px;
-}
-
-.hash-input:focus {
+  font-size: 14px;
+  font-weight: 500;
+  background: #fff;
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
-.threshold-input-table {
-  width: 50px;
-  padding: 4px 6px;
-  border: 1px solid #ced4da;
+/* Threshold cell */
+.threshold-cell {
+  width: 30%;
+}
+
+.threshold-display {
+  font-weight: 500;
+  color: #4a5568;
+  cursor: pointer;
+  padding: 4px 8px;
   border-radius: 4px;
+  transition: all 0.15s ease;
+  display: inline-block;
+  min-width: 60px;
   text-align: center;
-  font-size: 12px;
-  height: 28px;
 }
 
-.threshold-input-table:focus {
+.threshold-display:hover {
+  background-color: #e2e8f0;
+  color: #2c7be5;
+}
+
+.threshold-input-edit {
+  width: 80px;
+  border: 2px solid #2c7be5;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
-.hash-table-controls {
-  padding: 8px 12px;
+/* Actions cell */
+.actions-cell {
+  width: 30%;
+  text-align: right;
+}
+
+.row-action-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+  transition: all 0.15s ease;
+  color: #6c757d;
+}
+
+.row-action-button:hover {
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+.row-action-button.edit:hover {
+  background-color: #dbeafe;
+  color: #2563eb;
+}
+
+.row-action-button.save {
+  color: #059669;
+}
+
+.row-action-button.save:hover {
+  background-color: #d1fae5;
+  color: #047857;
+}
+
+.row-action-button.cancel {
+  color: #dc2626;
+}
+
+.row-action-button.cancel:hover {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.row-action-button.delete {
+  color: #dc2626;
+}
+
+.row-action-button.delete:hover {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+/* Table controls */
+.fingerprint-table-controls {
+  padding: 12px 16px;
+  background: #f8f9fa;
   border-top: 1px solid #e9ecef;
-  background-color: #fff;
   display: flex;
-  gap: 6px;
-  align-items: center;
+  gap: 8px;
 }
 
 .table-action-button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
-  border: 1px solid #ced4da;
+  padding: 8px 12px;
+  background: #2c7be5;
+  color: white;
+  border: none;
   border-radius: 6px;
-  background-color: #fff;
-  color: #495057;
-  font-size: 12px;
-  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
-  height: 32px;
-}
-
-.table-action-button.half-width {
-  flex: 1;
-  justify-content: center;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
 .table-action-button:hover {
-  background-color: #f8f9fa;
-  border-color: #adb5bd;
+  background: #1a68d1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(44, 123, 229, 0.3);
 }
 
-.table-action-button.primary {
-  background-color: #007bff;
-  border-color: #007bff;
-  color: #fff;
+.table-action-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(44, 123, 229, 0.3);
 }
 
-.table-action-button.primary:hover {
-  background-color: #0056b3;
-  border-color: #004085;
+.table-action-button svg {
+  flex-shrink: 0;
 }
 
-.table-action-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  background-color: #f8f9fa;
-  color: #6c757d;
-}
-
-.table-add-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 1px dashed #ced4da;
-  border-radius: 6px;
-  background-color: #fff;
-  color: #007bff;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.table-add-button:hover {
-  background-color: #f8f9fa;
-  border-color: #007bff;
-  border-style: solid;
-}
-
-.row-action-button {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 20px !important;
-  height: 20px !important;
-  border: 1px solid #dee2e6 !important;
-  border-radius: 3px !important;
-  background-color: #ffffff !important;
-  color: #495057 !important;
-  cursor: pointer !important;
-  transition: all 0.2s !important;
-  margin: 0 1px !important;
-  padding: 0 !important;
-  font-size: inherit !important;
-  font-weight: normal !important;
-  transform: none !important;
-  box-shadow: none !important;
-  filter: none !important;
-}
-
-.row-action-button:hover {
-  background-color: #f8f9fa !important;
-  border-color: #adb5bd !important;
-  transform: none !important;
-  box-shadow: none !important;
-  filter: none !important;
-}
-
-.row-action-button.save {
-  color: #28a745;
-}
-
-.row-action-button.save:hover {
-  background-color: #d4edda;
-}
-
-.row-action-button.cancel {
-  color: #6c757d;
-}
-
-.row-action-button.cancel:hover {
-  background-color: #f8f9fa;
-}
-
-.row-action-button.delete {
-  color: #dc3545;
-}
-
-.row-action-button.delete:hover {
-  background-color: #f8d7da;
-}
-
-.row-action-button svg {
-  width: 12px !important;
-  height: 12px !important;
-  stroke: currentColor !important;
-  fill: none !important;
-  stroke-width: 2 !important;
-  stroke-linecap: round !important;
-  stroke-linejoin: round !important;
-  display: block !important;
-  pointer-events: none !important;
-}
-
-/* 统一表格行元素高度 */
-#excludeHashesTable tbody tr {
-  height: 32px;
-}
-
-#excludeHashesTable tbody td {
-  height: 32px;
-  vertical-align: middle;
-  padding: 4px 8px;
-}
-
-/* 哈希值和阈值显示文本样式 */
-.hash-display, .threshold-display {
-  display: flex;
-  align-items: center;
-  height: 24px;
-  padding: 0 8px;
-  background-color: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 4px;
-  font-family: monospace;
-  font-size: 13px;
-  color: #495057;
-  cursor: pointer;
-}
-
-.hash-display:hover, .threshold-display:hover {
-  background-color: #e9ecef;
-  border-color: #adb5bd;
-}
-
-.hash-display.empty {
+/* Empty state */
+.fingerprint-empty {
   font-style: italic;
   color: #6c757d;
-  font-family: inherit;
-}
-
-/* 编辑模式输入框统一样式 */
-.hash-input, .threshold-input-edit {
-  width: 100%;
-  height: 24px;
-  padding: 0 8px;
-  border: 1px solid #007bff;
-  border-radius: 4px;
-  font-family: monospace;
-  font-size: 13px;
-  background-color: #fff;
-  box-sizing: border-box;
-}
-
-.hash-input:focus, .threshold-input-edit:focus {
-  outline: none;
-  border-color: #0056b3;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-}
-
-.manual-processing-container {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-top: 6px;
-}
-
-.manual-processing-container .table-action-button {
-  flex: 1;
-  min-width: 140px;
-  justify-content: center;
-}
-
-.hash-remove {
-  background: none;
-  border: none;
-  color: #dc3545;
-  cursor: pointer;
-  font-size: 14px;
-  padding: 2px 4px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
-
-.hash-remove:hover {
-  background-color: #f8d7da;
-}
-
-.hash-controls {
-  display: flex;
-  gap: 8px;
-}
-
-.hash-controls button {
-  flex: 1;
-  padding: 8px 12px;
-  font-size: 12px;
-}
-
-.manual-processing-container {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.manual-processing-container button {
-  flex: 1;
-  min-width: 150px;
-}
-
-.help-text {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 12px;
-  color: #6c757d;
-  line-height: 1.4;
-}
-
-.hash-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: flex-start;
-}
-
-.threshold-container {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 4px;
-}
-
-.threshold-label {
-  font-size: 12px;
-  color: #6c757d;
-  font-weight: normal;
-  margin: 0;
-}
-
-.threshold-input {
-  width: 60px;
-  padding: 2px 6px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 12px;
   text-align: center;
+  padding: 32px 16px;
+  background: #f8f9fa;
 }
 
-.threshold-input:focus {
-  outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+/* Editing row state */
+.fingerprint-table tbody tr.editing {
+  background-color: #f0f8ff;
+  box-shadow: inset 0 0 0 2px #2c7be5;
 }
 
-.hash-value {
-  font-family: monospace;
-  font-size: 13px;
-  color: #495057;
+.fingerprint-table tbody tr.editing td {
+  border-color: rgba(44, 123, 229, 0.2);
 }
 
-/* Dark Mode Support */
-@media (prefers-color-scheme: dark) {
-  /* Table Dark Mode Styles */
-  .hash-table-container {
-    border-color: #495057;
-    background-color: #2d3748;
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .fingerprint-table th,
+  .fingerprint-table td {
+    padding: 8px 12px;
+    font-size: 13px;
   }
-
-  .hash-table thead {
-    background-color: #1a202c;
+  
+  .fingerprint-name-display {
+    max-width: 120px;
   }
-
-  .hash-table th {
-    color: #e2e8f0;
-    border-bottom-color: #4a5568;
+  
+  .threshold-display {
+    min-width: 50px;
   }
-
-  .hash-table tbody tr {
-    border-bottom-color: #4a5568;
+  
+  .fingerprint-table-controls {
+    flex-direction: column;
   }
-
-  .hash-table tbody tr:hover {
-    background-color: #374151;
-  }
-
-  .hash-table tbody tr.editing {
-    background-color: #744d26;
-  }
-
-  .hash-table .hash-cell {
-    color: #a0aec0;
-  }
-
-  .hash-table-controls {
-    border-top-color: #4a5568;
-    background-color: #2d3748;
-  }
-
-  /* Input Dark Mode Styles */
-  .hash-input {
-    border-color: #4a5568;
-    background-color: #1a202c;
-    color: #e2e8f0;
-  }
-
-  .hash-input:focus {
-    border-color: #4299e1;
-    box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.25);
-  }
-
-  .threshold-input-table {
-    border-color: #4a5568;
-    background-color: #1a202c;
-    color: #e2e8f0;
-  }
-
-  .threshold-input-table:focus {
-    border-color: #4299e1;
-    box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.25);
-  }
-
-  /* Button Dark Mode Styles */
+  
   .table-action-button {
+    justify-content: center;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .fingerprint-table-container {
+    background: #2d3748;
     border-color: #4a5568;
-    background-color: #2d3748;
+  }
+
+  .fingerprint-table thead {
+    background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+  }
+
+  .fingerprint-table th {
+    color: #e2e8f0;
+    border-bottom-color: #4a5568;
+  }
+
+  .fingerprint-table td {
+    border-bottom-color: #4a5568;
+  }
+
+  .fingerprint-table tbody tr:hover {
+    background-color: #4a5568;
+  }
+
+  .fingerprint-name-display {
     color: #e2e8f0;
   }
 
-  .table-action-button:hover {
-    background-color: #374151;
-    border-color: #6b7280;
+  .fingerprint-name-display:hover {
+    color: #90cdf4;
   }
 
-  .table-action-button.primary {
-    background-color: #4299e1;
-    border-color: #4299e1;
-    color: #1a202c;
-  }
-
-  .table-action-button.primary:hover {
-    background-color: #3182ce;
-    border-color: #2c5282;
-  }
-
-  .table-action-button:disabled {
-    background-color: #374151;
-    color: #6b7280;
-    border-color: #4a5568;
-  }
-
-  .table-add-button {
-    border-color: #4a5568;
-    background-color: #2d3748;
-    color: #4299e1;
-  }
-
-  .table-add-button:hover {
-    background-color: #374151;
-    border-color: #4299e1;
-  }
-
-  /* Row Action Button Dark Mode Styles */
-  .row-action-button {
-    border-color: #4a5568 !important;
-    background-color: #2d3748 !important;
-    color: #a0aec0 !important;
-  }
-
-  .row-action-button:hover {
-    background-color: #374151 !important;
-    border-color: #6b7280 !important;
-  }
-
-  .row-action-button.save {
-    color: #68d391 !important;
-  }
-
-  .row-action-button.save:hover {
-    background-color: #276749 !important;
-  }
-
-  .row-action-button.cancel {
-    color: #a0aec0 !important;
-  }
-
-  .row-action-button.cancel:hover {
-    background-color: #374151 !important;
-  }
-
-  .row-action-button.delete {
-    color: #fc8181 !important;
-  }
-
-  .row-action-button.delete:hover {
-    background-color: #742a2a !important;
-  }
-
-  /* Hash and Threshold Display Dark Mode */
-  .hash-display, .threshold-display {
-    background-color: #2d3748 !important;
-    border-color: #4a5568 !important;
-    color: #e2e8f0 !important;
-  }
-
-  .hash-display:hover, .threshold-display:hover {
-    background-color: #374151 !important;
-    border-color: #6b7280 !important;
-  }
-
-  .hash-display.empty {
-    color: #a0aec0 !important;
-  }
-
-  /* Edit Mode Input Dark Mode */
-  .hash-input, .threshold-input-edit {
-    background-color: #1a202c !important;
-    border-color: #4299e1 !important;
-    color: #e2e8f0 !important;
-  }
-
-  .hash-input:focus, .threshold-input-edit:focus {
-    border-color: #63b3ed !important;
-    box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.25) !important;
-  }
-
-  /* General Dark Mode Styles for Post-Processing */
-  .hash-empty {
-    color: #a0aec0 !important;
-  }
-
-  .threshold-input {
-    border-color: #4a5568;
-    background-color: #1a202c;
+  .threshold-display {
     color: #e2e8f0;
   }
 
-  .threshold-input:focus {
-    border-color: #4299e1;
-    box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.25);
+  .threshold-display:hover {
+    background-color: #4a5568;
+    color: #90cdf4;
   }
 
-  .threshold-label {
+  .fingerprint-table-controls {
+    background: #4a5568;
+    border-top-color: #2d3748;
+  }
+
+  .fingerprint-empty {
     color: #a0aec0;
+    background: #4a5568;
   }
 
-  .hash-value {
-    color: #e2e8f0;
-  }
-
-  .hash-remove {
-    color: #fc8181;
-  }
-
-  .hash-remove:hover {
-    background-color: #742a2a;
+  .fingerprint-table tbody tr.editing {
+    background-color: rgba(66, 153, 225, 0.1);
   }
 }

@@ -192,24 +192,24 @@
             <label for="enablePostProcessing">Enable Post-Processing</label>
           </div>
 
-          <span class="help-text">Exclude images based on their hash value match. A lower Hamming distance threshold corresponds to stricter matching criteria.</span>
+          <span class="help-text">Exclude images based on SSIM fingerprint similarity. A higher similarity threshold (closer to 1.0) corresponds to stricter matching criteria.</span>
 
           <div class="form-group">
-            <div class="hash-table-container">
-              <table id="excludeHashesTable" class="hash-table">
+            <div class="fingerprint-table-container">
+              <table id="excludeFingerprintsTable" class="fingerprint-table">
                 <thead>
                   <tr>
-                    <th>Exclude Hash Value</th>
-                    <th>Threshold</th>
+                    <th>Fingerprint Name</th>
+                    <th>Similarity Threshold</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
-                <tbody id="excludeHashesTableBody">
-                  <!-- Hash rows will be populated here -->
+                <tbody id="excludeFingerprintsTableBody">
+                  <!-- Fingerprint rows will be populated here -->
                 </tbody>
               </table>
-              <div class="hash-table-controls">
-                <button type="button" id="btnSelectImageHash" class="table-action-button half-width">
+              <div class="fingerprint-table-controls">
+                <button type="button" id="btnSelectImageFingerprint" class="table-action-button">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                     <circle cx="8.5" cy="8.5" r="1.5"/>
@@ -217,12 +217,13 @@
                   </svg>
                   Add from Image
                 </button>
-                <button type="button" id="btnAddCustomHash" class="table-action-button half-width">
+                <button type="button" id="btnTestSimilarity" class="table-action-button">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <path d="m9 12 2 2 4-4"/>
+                    <path d="M21 12c.552 0 1.005-.449.95-.998a10 10 0 0 0-8.953-8.951c-.55-.055-.998.398-.998.95v8a1 1 0 0 0 1 1z"/>
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
                   </svg>
-                  Add Custom Hash
+                  Test Similarity
                 </button>
               </div>
             </div>
