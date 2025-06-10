@@ -866,6 +866,294 @@ body.dark-mode .help-text {
   flex-shrink: 0;
 }
 
+/* ===== Fingerprint Table Styles ===== */
+.fingerprint-table-container {
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.fingerprint-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.fingerprint-table thead {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.fingerprint-table th {
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #495057;
+  border-bottom: 2px solid #dee2e6;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.fingerprint-table th:first-child {
+  width: 55%;
+}
+
+.fingerprint-table th:nth-child(2) {
+  width: 25%;
+  text-align: center;
+}
+
+.fingerprint-table th:nth-child(3) {
+  width: 20%;
+}
+
+.fingerprint-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f1f3f4;
+  vertical-align: middle;
+}
+
+.fingerprint-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.fingerprint-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.fingerprint-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Fingerprint name cell */
+.fingerprint-name-cell {
+  width: 40%;
+}
+
+.fingerprint-name-display {
+  font-weight: 500;
+  color: #2d3748;
+  cursor: pointer;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+
+.fingerprint-name-display:hover {
+  color: #2c7be5;
+}
+
+.fingerprint-name-display.editable {
+  border: 2px solid #2c7be5;
+  border-radius: 4px;
+  padding: 4px 8px;
+  background: #fff;
+}
+
+.fingerprint-name-input {
+  width: 100%;
+  border: 2px solid #2c7be5;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 14px;
+  font-weight: 500;
+  background: #fff;
+  outline: none;
+}
+
+/* Threshold cell */
+.threshold-cell {
+  width: 25%;
+  text-align: center;
+}
+
+.threshold-display {
+  font-weight: 500;
+  color: #4a5568;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  display: inline-block;
+  min-width: 60px;
+  text-align: center;
+}
+
+.threshold-display:hover {
+  background-color: #e2e8f0;
+  color: #2c7be5;
+}
+
+.threshold-input-edit {
+  width: 80px;
+  border: 2px solid #2c7be5;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  outline: none;
+}
+
+/* Actions cell */
+.actions-cell {
+  width: 35%;
+  text-align: right;
+}
+
+.row-action-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+  transition: all 0.15s ease;
+  color: #6c757d;
+}
+
+.row-action-button:hover {
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+.row-action-button.edit:hover {
+  background-color: #dbeafe;
+  color: #2563eb;
+}
+
+.row-action-button.save {
+  color: #059669;
+}
+
+.row-action-button.save:hover {
+  background-color: #d1fae5;
+  color: #047857;
+}
+
+.row-action-button.cancel {
+  color: #dc2626;
+}
+
+.row-action-button.cancel:hover {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.row-action-button.delete {
+  color: #dc2626;
+}
+
+.row-action-button.delete:hover {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.row-action-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: #9ca3af;
+}
+
+.row-action-button.disabled:hover {
+  background-color: transparent;
+  color: #9ca3af;
+  transform: none;
+}
+
+/* Table controls */
+.fingerprint-table-controls {
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  gap: 8px;
+}
+
+.fingerprint-table-controls .table-action-button {
+  flex: 1;
+  justify-content: center;
+}
+
+.table-action-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  color: #495057;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.table-action-button:hover {
+  background: #e9ecef;
+  color: #343a40;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.table-action-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.table-action-button svg {
+  flex-shrink: 0;
+}
+
+/* Manual processing container styles */
+.manual-processing-container {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.manual-processing-container .table-action-button {
+  flex: 1;
+  justify-content: center;
+}
+
+/* Empty state */
+.fingerprint-empty {
+  font-style: italic;
+  color: #6c757d;
+  text-align: center;
+  padding: 32px 16px;
+  background: #f8f9fa;
+}
+
+/* Editing row state */
+.fingerprint-table tbody tr.editing {
+  background-color: #f0f8ff;
+  box-shadow: inset 0 0 0 2px #2c7be5;
+}
+
+.fingerprint-table tbody tr.editing td {
+  border-color: rgba(44, 123, 229, 0.2);
+}
+
+/* Preset fingerprint styling */
+.fingerprint-name-display.preset-fingerprint {
+  position: relative;
+  font-weight: 600;
+  color: #059669;
+}
+
+.fingerprint-name-display.preset-fingerprint::before {
+  font-size: 11px;
+  margin-right: 4px;
+  opacity: 0.8;
+}
+
 @media (prefers-color-scheme: dark) {
   body {
     background-color: #1a202c;
@@ -1333,262 +1621,149 @@ body.dark-mode .help-text {
     border-color: #4a5568;
     background-color: #2d3748;
   }
-}
 
-/* ===== Fingerprint Table Styles ===== */
-.fingerprint-table-container {
-  background: #fff;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  overflow: hidden;
-  margin-top: 8px;
-}
+  /* Fingerprint Table Dark Mode */
+  .fingerprint-table-container {
+    background: #2d3748;
+    border-color: #4a5568;
+  }
 
-.fingerprint-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
+  .fingerprint-table thead {
+    background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  }
 
-.fingerprint-table thead {
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-}
+  .fingerprint-table th {
+    color: #e2e8f0;
+    border-bottom-color: #4a5568;
+  }
 
-.fingerprint-table th {
-  padding: 12px 16px;
-  text-align: left;
-  font-weight: 600;
-  color: #495057;
-  border-bottom: 2px solid #dee2e6;
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
+  .fingerprint-table td {
+    border-bottom-color: #4a5568;
+  }
 
-.fingerprint-table td {
-  padding: 12px 16px;
-  border-bottom: 1px solid #f1f3f4;
-  vertical-align: middle;
-}
+  .fingerprint-table tbody tr {
+    background-color: #2d3748;
+  }
 
-.fingerprint-table tbody tr {
-  transition: background-color 0.15s ease;
-}
+  .fingerprint-table tbody tr:hover {
+    background-color: #374151;
+  }
 
-.fingerprint-table tbody tr:hover {
-  background-color: #f8f9fa;
-}
+  .fingerprint-name-display {
+    color: #e2e8f0;
+  }
 
-.fingerprint-table tbody tr:last-child td {
-  border-bottom: none;
-}
+  .fingerprint-name-display:hover {
+    color: #60a5fa;
+  }
 
-/* Fingerprint name cell */
-.fingerprint-name-cell {
-  width: 40%;
-}
+  .fingerprint-name-display.editable {
+    background: #374151;
+    border-color: #60a5fa;
+  }
 
-.fingerprint-name-display {
-  font-weight: 500;
-  color: #2d3748;
-  cursor: pointer;
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transition: color 0.15s ease;
-}
+  .fingerprint-name-input {
+    background: #374151;
+    border-color: #60a5fa;
+    color: #e2e8f0;
+  }
 
-.fingerprint-name-display:hover {
-  color: #2c7be5;
-}
+  .threshold-display {
+    color: #e2e8f0;
+  }
 
-.fingerprint-name-display.editable {
-  border: 2px solid #2c7be5;
-  border-radius: 4px;
-  padding: 4px 8px;
-  background: #fff;
-}
+  .threshold-display:hover {
+    background-color: #374151;
+    color: #60a5fa;
+  }
 
-.fingerprint-name-input {
-  width: 100%;
-  border: 2px solid #2c7be5;
-  border-radius: 4px;
-  padding: 6px 8px;
-  font-size: 14px;
-  font-weight: 500;
-  background: #fff;
-  outline: none;
-}
+  .threshold-input-edit {
+    background: #374151;
+    border-color: #60a5fa;
+    color: #e2e8f0;
+  }
 
-/* Threshold cell */
-.threshold-cell {
-  width: 30%;
-}
+  /* Table Controls Dark Mode */
+  .fingerprint-table-controls {
+    background: #374151;
+    border-top-color: #4a5568;
+  }
 
-.threshold-display {
-  font-weight: 500;
-  color: #4a5568;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: all 0.15s ease;
-  display: inline-block;
-  min-width: 60px;
-  text-align: center;
-}
+  .table-action-button {
+    background: #374151;
+    color: #e2e8f0;
+    border-color: #4a5568;
+  }
 
-.threshold-display:hover {
-  background-color: #e2e8f0;
-  color: #2c7be5;
-}
+  .table-action-button:hover {
+    background: #4a5568;
+    color: #f3f4f6;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
 
-.threshold-input-edit {
-  width: 80px;
-  border: 2px solid #2c7be5;
-  border-radius: 4px;
-  padding: 6px 8px;
-  font-size: 14px;
-  font-weight: 500;
-  text-align: center;
-  outline: none;
-}
+  .table-action-button:active {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
 
-/* Actions cell */
-.actions-cell {
-  width: 30%;
-  text-align: right;
-}
+  /* Row Action Buttons Dark Mode */
+  .row-action-button {
+    color: #9ca3af;
+  }
 
-.row-action-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 6px;
-  border-radius: 4px;
-  margin-left: 4px;
-  transition: all 0.15s ease;
-  color: #6c757d;
-}
+  .row-action-button:hover {
+    background-color: #374151;
+    color: #e2e8f0;
+  }
 
-.row-action-button:hover {
-  background-color: #e9ecef;
-  color: #495057;
-}
+  .row-action-button.edit:hover {
+    background-color: rgba(96, 165, 250, 0.2);
+    color: #60a5fa;
+  }
 
-.row-action-button.edit:hover {
-  background-color: #dbeafe;
-  color: #2563eb;
-}
+  .row-action-button.save {
+    color: #34d399;
+  }
 
-.row-action-button.save {
-  color: #059669;
-}
+  .row-action-button.save:hover {
+    background-color: rgba(52, 211, 153, 0.2);
+    color: #6ee7b7;
+  }
 
-.row-action-button.save:hover {
-  background-color: #d1fae5;
-  color: #047857;
-}
+  .row-action-button.cancel,
+  .row-action-button.delete {
+    color: #f87171;
+  }
 
-.row-action-button.cancel {
-  color: #dc2626;
-}
+  .row-action-button.cancel:hover,
+  .row-action-button.delete:hover {
+    background-color: rgba(248, 113, 113, 0.2);
+    color: #fca5a5;
+  }
 
-.row-action-button.cancel:hover {
-  background-color: #fee2e2;
-  color: #b91c1c;
-}
+  .row-action-button.disabled {
+    color: #6b7280;
+  }
 
-.row-action-button.delete {
-  color: #dc2626;
-}
+  .row-action-button.disabled:hover {
+    background-color: transparent;
+    color: #6b7280;
+  }
 
-.row-action-button.delete:hover {
-  background-color: #fee2e2;
-  color: #b91c1c;
-}
+  /* Empty State Dark Mode */
+  .fingerprint-empty {
+    color: #9ca3af;
+    background: #374151;
+  }
 
-.row-action-button.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  color: #9ca3af;
-}
+  /* Editing Row State Dark Mode */
+  .fingerprint-table tbody tr.editing {
+    background-color: rgba(96, 165, 250, 0.1);
+    box-shadow: inset 0 0 0 2px #60a5fa;
+  }
 
-.row-action-button.disabled:hover {
-  background-color: transparent;
-  color: #9ca3af;
-  transform: none;
-}
-
-/* Table controls */
-.fingerprint-table-controls {
-  padding: 12px 16px;
-  background: #f8f9fa;
-  border-top: 1px solid #e9ecef;
-  display: flex;
-  gap: 8px;
-}
-
-.table-action-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  background: #2c7be5;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-.table-action-button:hover {
-  background: #1a68d1;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(44, 123, 229, 0.3);
-}
-
-.table-action-button:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(44, 123, 229, 0.3);
-}
-
-.table-action-button svg {
-  flex-shrink: 0;
-}
-
-/* Empty state */
-.fingerprint-empty {
-  font-style: italic;
-  color: #6c757d;
-  text-align: center;
-  padding: 32px 16px;
-  background: #f8f9fa;
-}
-
-/* Editing row state */
-.fingerprint-table tbody tr.editing {
-  background-color: #f0f8ff;
-  box-shadow: inset 0 0 0 2px #2c7be5;
-}
-
-.fingerprint-table tbody tr.editing td {
-  border-color: rgba(44, 123, 229, 0.2);
-}
-
-/* Preset fingerprint styling */
-.fingerprint-name-display.preset-fingerprint {
-  position: relative;
-  font-weight: 600;
-  color: #059669;
-}
-
-.fingerprint-name-display.preset-fingerprint::before {
-  font-size: 11px;
-  margin-right: 4px;
-  opacity: 0.8;
+  .fingerprint-table tbody tr.editing td {
+    border-color: rgba(96, 165, 250, 0.3);
+  }
 }
 
 /* Dark mode preset fingerprint styling */
@@ -1600,4 +1775,373 @@ body.dark-mode .help-text {
 
 body.dark-mode .fingerprint-name-display.preset-fingerprint {
   color: #34d399;
+}
+
+/* Dark mode styles for body.dark-mode class */
+body.dark-mode .fingerprint-table-container {
+  background: #2d3748;
+  border-color: #4a5568;
+}
+
+body.dark-mode .fingerprint-table thead {
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+}
+
+body.dark-mode .fingerprint-table th {
+  color: #e2e8f0;
+  border-bottom-color: #4a5568;
+}
+
+body.dark-mode .fingerprint-table td {
+  border-bottom-color: #4a5568;
+}
+
+body.dark-mode .fingerprint-table tbody tr {
+  background-color: #2d3748;
+}
+
+body.dark-mode .fingerprint-table tbody tr:hover {
+  background-color: #374151;
+}
+
+body.dark-mode .fingerprint-name-display {
+  color: #e2e8f0;
+}
+
+body.dark-mode .fingerprint-name-display:hover {
+  color: #60a5fa;
+}
+
+body.dark-mode .fingerprint-name-display.editable {
+  background: #374151;
+  border-color: #60a5fa;
+}
+
+body.dark-mode .fingerprint-name-input {
+  background: #374151;
+  border-color: #60a5fa;
+  color: #e2e8f0;
+}
+
+body.dark-mode .threshold-display {
+  color: #e2e8f0;
+}
+
+body.dark-mode .threshold-display:hover {
+  background-color: #374151;
+  color: #60a5fa;
+}
+
+body.dark-mode .threshold-input-edit {
+  background: #374151;
+  border-color: #60a5fa;
+  color: #e2e8f0;
+}
+
+body.dark-mode .fingerprint-table-controls {
+  background: #374151;
+  border-top-color: #4a5568;
+}
+
+body.dark-mode .table-action-button {
+  background: #374151;
+  color: #e2e8f0;
+  border-color: #4a5568;
+}
+
+body.dark-mode .table-action-button:hover {
+  background: #4a5568;
+  color: #f3f4f6;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .table-action-button:active {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .row-action-button {
+  color: #9ca3af;
+}
+
+body.dark-mode .row-action-button:hover {
+  background-color: #374151;
+  color: #e2e8f0;
+}
+
+body.dark-mode .row-action-button.edit:hover {
+  background-color: rgba(96, 165, 250, 0.2);
+  color: #60a5fa;
+}
+
+body.dark-mode .row-action-button.save {
+  color: #34d399;
+}
+
+body.dark-mode .row-action-button.save:hover {
+  background-color: rgba(52, 211, 153, 0.2);
+  color: #6ee7b7;
+}
+
+body.dark-mode .row-action-button.cancel,
+body.dark-mode .row-action-button.delete {
+  color: #f87171;
+}
+
+body.dark-mode .row-action-button.cancel:hover,
+body.dark-mode .row-action-button.delete:hover {
+  background-color: rgba(248, 113, 113, 0.2);
+  color: #fca5a5;
+}
+
+body.dark-mode .row-action-button.disabled {
+  color: #6b7280;
+}
+
+body.dark-mode .row-action-button.disabled:hover {
+  background-color: transparent;
+  color: #6b7280;
+}
+
+body.dark-mode .fingerprint-empty {
+  color: #9ca3af;
+  background: #374151;
+}
+
+body.dark-mode .fingerprint-table tbody tr.editing {
+  background-color: rgba(96, 165, 250, 0.1);
+  box-shadow: inset 0 0 0 2px #60a5fa;
+}
+
+body.dark-mode .fingerprint-table tbody tr.editing td {
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+/* ===== Similarity Test Results Dialog Styles ===== */
+.similarity-test-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  z-index: 1000;
+  width: 420px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+}
+
+.similarity-test-header {
+  background: #ffffff;
+  color: #374151;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.similarity-test-body {
+  padding: 16px;
+  background: #ffffff;
+}
+
+.similarity-test-code-block {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 12px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #374151;
+  overflow-x: auto;
+}
+
+.json-line {
+  display: block;
+  margin: 0;
+  white-space: pre;
+}
+
+.json-brace {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.json-key {
+  color: #1d4ed8;
+  font-weight: 500;
+}
+
+.json-colon {
+  color: #6b7280;
+  margin: 0 2px;
+}
+
+.json-string {
+  color: #059669;
+}
+
+.json-number {
+  color: #d97706;
+  font-weight: 500;
+}
+
+.json-boolean {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.json-boolean.match {
+  color: #dc2626;
+}
+
+.json-boolean.no-match {
+  color: #059669;
+}
+
+.json-comma {
+  color: #6b7280;
+}
+
+.similarity-test-footer {
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.similarity-test-close-btn {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.similarity-test-close-btn:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+/* Dark mode styles for similarity test results */
+@media (prefers-color-scheme: dark) {
+  .similarity-test-dialog {
+    background-color: #1f2937;
+    border-color: #374151;
+    color: #f3f4f6;
+  }
+
+  .similarity-test-header {
+    background: #1f2937;
+    color: #f3f4f6;
+    border-bottom-color: #374151;
+  }
+
+  .similarity-test-body {
+    background: #1f2937;
+  }
+
+  .similarity-test-code-block {
+    background-color: #111827;
+    border-color: #374151;
+    color: #f3f4f6;
+  }
+
+  .json-key {
+    color: #60a5fa;
+  }
+
+  .json-string {
+    color: #34d399;
+  }
+
+  .json-number {
+    color: #fbbf24;
+  }
+
+  .json-brace,
+  .json-colon,
+  .json-comma {
+    color: #9ca3af;
+  }
+
+  .similarity-test-footer {
+    background: #374151;
+    border-top-color: #4b5563;
+  }
+
+  .similarity-test-close-btn {
+    background-color: #4b5563;
+    color: #f3f4f6;
+    border-color: #6b7280;
+  }
+
+  .similarity-test-close-btn:hover {
+    background-color: #6b7280;
+    border-color: #9ca3af;
+  }
+}
+
+body.dark-mode .similarity-test-dialog {
+  background-color: #1f2937;
+  border-color: #374151;
+  color: #f3f4f6;
+}
+
+body.dark-mode .similarity-test-header {
+  background: #1f2937;
+  color: #f3f4f6;
+  border-bottom-color: #374151;
+}
+
+body.dark-mode .similarity-test-body {
+  background: #1f2937;
+}
+
+body.dark-mode .similarity-test-code-block {
+  background-color: #111827;
+  border-color: #374151;
+  color: #f3f4f6;
+}
+
+body.dark-mode .json-key {
+  color: #60a5fa;
+}
+
+body.dark-mode .json-string {
+  color: #34d399;
+}
+
+body.dark-mode .json-number {
+  color: #fbbf24;
+}
+
+body.dark-mode .json-brace,
+body.dark-mode .json-colon,
+body.dark-mode .json-comma {
+  color: #9ca3af;
+}
+
+body.dark-mode .similarity-test-footer {
+  background: #374151;
+  border-top-color: #4b5563;
+}
+
+body.dark-mode .similarity-test-close-btn {
+  background-color: #4b5563;
+  color: #f3f4f6;
+  border-color: #6b7280;
+}
+
+body.dark-mode .similarity-test-close-btn:hover {
+  background-color: #6b7280;
+  border-color: #9ca3af;
 }

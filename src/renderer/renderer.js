@@ -1391,32 +1391,73 @@ Threshold: ${(bestMatch.threshold * 100).toFixed(1)}%
 Status: ${matchStatus}
 Total matches: ${matchCount}/${excludeFingerprints.length}`;
           
-          // Show results in a dialog
+          // Show results in a professional technical dialog
           const dialog = document.createElement('div');
-          dialog.style.cssText = `
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: white; border: 2px solid #e2e8f0; border-radius: 8px;
-            padding: 20px; max-width: 400px; z-index: 1000;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-            font-family: 'Inter', sans-serif;
-          `;
+          dialog.className = 'similarity-test-dialog';
+          
+          // Format data as JSON-like structure
+          const jsonData = {
+            testImage: imageName,
+            analysis: {
+              bestMatch: {
+                name: bestMatch.name,
+                similarity: parseFloat((bestMatch.similarity * 100).toFixed(1)),
+                threshold: parseFloat((bestMatch.threshold * 100).toFixed(1)),
+                status: matchStatus
+              },
+              summary: {
+                totalMatches: matchCount,
+                totalFingerprints: excludeFingerprints.length,
+                matchPercentage: parseFloat(((matchCount / excludeFingerprints.length) * 100).toFixed(1))
+              }
+            }
+          };
+          
+          // Create formatted JSON display
+          const formatJsonValue = (key, value, isLast = false) => {
+            const comma = isLast ? '' : ',';
+            
+            if (typeof value === 'string') {
+              if (key === 'status') {
+                const statusClass = value === 'MATCH' ? 'match' : 'no-match';
+                return `    <span class="json-key">"${key}"</span><span class="json-colon">:</span> <span class="json-boolean ${statusClass}">${value}</span>${comma}`;
+              }
+              return `    <span class="json-key">"${key}"</span><span class="json-colon">:</span> <span class="json-string">"${value}"</span>${comma}`;
+            } else if (typeof value === 'number') {
+              return `    <span class="json-key">"${key}"</span><span class="json-colon">:</span> <span class="json-number">${value}</span>${comma}`;
+            }
+            return `    <span class="json-key">"${key}"</span><span class="json-colon">:</span> ${value}${comma}`;
+          };
+          
+          const jsonDisplay = `<span class="json-brace">{</span>
+  <span class="json-key">"testImage"</span><span class="json-colon">:</span> <span class="json-string">"${jsonData.testImage}"</span>,
+  <span class="json-key">"analysis"</span><span class="json-colon">:</span> <span class="json-brace">{</span>
+    <span class="json-key">"bestMatch"</span><span class="json-colon">:</span> <span class="json-brace">{</span>
+${formatJsonValue('name', jsonData.analysis.bestMatch.name)}
+${formatJsonValue('similarity', jsonData.analysis.bestMatch.similarity)}
+${formatJsonValue('threshold', jsonData.analysis.bestMatch.threshold)}
+${formatJsonValue('status', jsonData.analysis.bestMatch.status, true)}
+    <span class="json-brace">}</span>,
+    <span class="json-key">"summary"</span><span class="json-colon">:</span> <span class="json-brace">{</span>
+${formatJsonValue('totalMatches', jsonData.analysis.summary.totalMatches)}
+${formatJsonValue('totalFingerprints', jsonData.analysis.summary.totalFingerprints)}
+${formatJsonValue('matchPercentage', jsonData.analysis.summary.matchPercentage, true)}
+    <span class="json-brace">}</span>
+  <span class="json-brace">}</span>
+<span class="json-brace">}</span>`;
           
           dialog.innerHTML = `
-            <h3 style="margin: 0 0 15px 0; color: #2d3748; font-size: 16px;">Similarity Test Results</h3>
-            <div style="margin-bottom: 15px;">
-              <div style="margin-bottom: 8px;"><strong>Image:</strong> ${imageName}</div>
-              <div style="margin-bottom: 8px;"><strong>Best Match:</strong> ${bestMatch.name}</div>
-              <div style="margin-bottom: 8px;"><strong>Similarity:</strong> ${(bestMatch.similarity * 100).toFixed(1)}%</div>
-              <div style="margin-bottom: 8px;"><strong>Threshold:</strong> ${(bestMatch.threshold * 100).toFixed(1)}%</div>
-              <div style="margin-bottom: 8px; ${matchStyle}"><strong>Status:</strong> ${matchStatus}</div>
-              <div><strong>Matches Found:</strong> ${matchCount}/${excludeFingerprints.length}</div>
+            <div class="similarity-test-header">
+              Similarity Test Results
             </div>
-            <button id="closeTestDialog" style="
-              background: #2c7be5; color: white; border: none; border-radius: 4px;
-              padding: 8px 16px; cursor: pointer; font-size: 14px;
-              float: right;
-            ">Close</button>
-            <div style="clear: both;"></div>
+            <div class="similarity-test-body">
+              <div class="similarity-test-code-block">
+                <pre class="json-line">${jsonDisplay}</pre>
+              </div>
+            </div>
+            <div class="similarity-test-footer">
+              <button id="closeTestDialog" class="similarity-test-close-btn">Close</button>
+            </div>
           `;
           
           // Add backdrop
