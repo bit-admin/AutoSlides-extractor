@@ -87,6 +87,8 @@ const defaultConfig = {
   sizeIdenticalThreshold: 0.0005,
   sizeDiffThreshold: 0.05,
   enableMultiCore: true,
+  // Video processing settings
+  videoQuality: 1,                            // Video quality (1=highest, 31=lowest)
   // Post-processing settings
   enablePostProcessing: true,
   useSSIMFingerprint: true,                    // Use SSIM fingerprint by default
@@ -381,12 +383,19 @@ ipcMain.handle('extract-frames', async (event, { videoPath, outputDir, interval,
         }
         
         // Set up frame extraction command
+        const config = loadConfig();
+        const videoQuality = config.videoQuality || 1;
+        const enableMultiCore = config.enableMultiCore !== false;
+        
+        // Configure thread usage based on multi-core setting
+        const threadCount = enableMultiCore ? 0 : 1; // 0 means use all available threads, 1 means single thread
+        
         const command = ffmpeg(videoPath)
           .outputOptions([
             `-vf fps=1/${interval}`,  // Extract one frame every interval seconds
-            `-threads 0`,             // Use all available threads
+            `-threads ${threadCount}`, // Thread count based on multi-core setting
             `-preset ultrafast`,      // Use ultrafast preset for faster processing
-            '-q:v 1'                  // Highest quality
+            `-q:v ${videoQuality}`    // Video quality from configuration
           ])
           .output(path.join(saveFrames ? framesDir : tempDir, 'frame-%04d.jpg'))
           .on('progress', (progress) => {

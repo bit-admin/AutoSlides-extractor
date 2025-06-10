@@ -139,12 +139,25 @@
             <label for="enableDoubleVerification">Enable Secondary Verification</label>
           </div>
           
-          <div class="form-group">
-            <label for="verificationCount">Verification Frame Count</label>
-            <input type="number" id="verificationCount" min="1" max="10" step="1" value="3">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="verificationCount">Verification Frame Count</label>
+              <input type="number" id="verificationCount" min="1" max="10" step="1" value="3">
+            </div>
+            
+            <div class="form-group">
+              <label for="videoQuality">Image Quality</label>
+              <select id="videoQuality">
+                <option value="1">Highest (1)</option>
+                <option value="3">High (3)</option>
+                <option value="8">Medium (8)</option>
+                <option value="15">Low (15)</option>
+                <option value="25">Lowest (25)</option>
+              </select>
+            </div>
           </div>
 
-          <small class="help-text">Number of consecutive identical frames required (1-10)</small>
+          <small class="help-text">Multi-Core Processing uses all CPU threads for faster video processing. Verification Count is the number of consecutive identical frames required.</small>
         </div>
         
         <!-- Threshold Settings Section -->

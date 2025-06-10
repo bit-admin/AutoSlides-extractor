@@ -37,6 +37,7 @@ const pixelChangeRatioThreshold = document.getElementById('pixelChangeRatioThres
 const verificationCount = document.getElementById('verificationCount');
 const sizeIdenticalThreshold = document.getElementById('sizeIdenticalThreshold');
 const sizeDiffThreshold = document.getElementById('sizeDiffThreshold');
+const videoQuality = document.getElementById('videoQuality');
 
 // Post-processing elements
 const enablePostProcessing = document.getElementById('enablePostProcessing');
@@ -88,6 +89,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     verificationCount.value = config.verificationCount || 3;
     sizeIdenticalThreshold.value = config.sizeIdenticalThreshold || 0.99;
     sizeDiffThreshold.value = config.sizeDiffThreshold || 0.1;
+    
+    // Load video processing settings
+    videoQuality.value = config.videoQuality || 1;
 
     // Load post-processing settings
     enablePostProcessing.checked = config.enablePostProcessing !== false;
@@ -302,6 +306,7 @@ function showAdvancedSettings() {
   const modalVerificationCount = advancedSettingsModal.querySelector('#verificationCount');
   const modalSizeIdenticalThreshold = advancedSettingsModal.querySelector('#sizeIdenticalThreshold');
   const modalSizeDiffThreshold = advancedSettingsModal.querySelector('#sizeDiffThreshold');
+  const modalVideoQuality = advancedSettingsModal.querySelector('#videoQuality');
   
   // Load post-processing settings into modal controls
   const modalEnablePostProcessing = advancedSettingsModal.querySelector('#enablePostProcessing');
@@ -313,6 +318,7 @@ function showAdvancedSettings() {
   if (modalVerificationCount) modalVerificationCount.value = verificationCount.value;
   if (modalSizeIdenticalThreshold) modalSizeIdenticalThreshold.value = sizeIdenticalThreshold.value;
   if (modalSizeDiffThreshold) modalSizeDiffThreshold.value = sizeDiffThreshold.value;
+  if (modalVideoQuality) modalVideoQuality.value = videoQuality.value;
   if (modalEnablePostProcessing) modalEnablePostProcessing.checked = enablePostProcessing.checked;
   
   // Update exclude fingerprints list in modal
@@ -341,6 +347,7 @@ async function saveAdvancedSettings() {
     const modalVerificationCount = advancedSettingsModal.querySelector('#verificationCount');
     const modalSizeIdenticalThreshold = advancedSettingsModal.querySelector('#sizeIdenticalThreshold');
     const modalSizeDiffThreshold = advancedSettingsModal.querySelector('#sizeDiffThreshold');
+    const modalVideoQuality = advancedSettingsModal.querySelector('#videoQuality');
     
     // Get post-processing settings from modal
     const modalEnablePostProcessing = advancedSettingsModal.querySelector('#enablePostProcessing');
@@ -354,6 +361,7 @@ async function saveAdvancedSettings() {
     if (modalVerificationCount) verificationCount.value = modalVerificationCount.value;
     if (modalSizeIdenticalThreshold) sizeIdenticalThreshold.value = modalSizeIdenticalThreshold.value;
     if (modalSizeDiffThreshold) sizeDiffThreshold.value = modalSizeDiffThreshold.value;
+    if (modalVideoQuality) videoQuality.value = modalVideoQuality.value;
     if (modalEnablePostProcessing) enablePostProcessing.checked = modalEnablePostProcessing.checked;
     
     // Save the configuration
@@ -396,6 +404,7 @@ async function saveConfig() {
       verificationCount: parseInt(verificationCount.value),
       sizeIdenticalThreshold: parseFloat(sizeIdenticalThreshold.value),
       sizeDiffThreshold: parseFloat(sizeDiffThreshold.value),
+      videoQuality: parseInt(videoQuality.value),
       enablePostProcessing: enablePostProcessing.checked
       // Note: excludeFingerprints is now managed through the index system
     };
