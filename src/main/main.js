@@ -90,7 +90,7 @@ const defaultConfig = {
   // Post-processing settings
   enablePostProcessing: true,
   useSSIMFingerprint: true,                    // Use SSIM fingerprint by default
-  ssimSimilarityThreshold: 0.85,              // Default SSIM similarity threshold
+  ssimSimilarityThreshold: 0.95,              // Default SSIM similarity threshold
   fingerprintStorageDir: null,                // Will be set to userData/fingerprints
   excludeFingerprints: [
     // Example SSIM fingerprint exclude entry
@@ -254,9 +254,13 @@ app.whenReady().then(() => {
   createApplicationMenu();
   ensureDirectoryExists(config.outputDir);
   
-  // Ensure fingerprint storage directory exists and sync with config
+  // Ensure fingerprint storage directory exists and initialize preset fingerprints
   ensureFingerprintStorageExists();
-  syncFingerprintsWithConfig();
+  
+  // Sync with config after initialization is complete
+  setTimeout(() => {
+    syncFingerprintsWithConfig();
+  }, 100);
 
   app.on('activate', function () {
     // On macOS, when clicking the dock icon and no other windows are open, it usually recreates a window in the application.
@@ -575,14 +579,17 @@ ipcMain.handle('cleanup-temp-dir', async (event, tempDir) => {
 const SSIM_FINGERPRINT_SIZE = 64;         // 64x64 pixel image for fingerprint calculation
 const SSIM_BLOCK_SIZE = 8;                // 8x8 blocks for local feature extraction
 const SSIM_BLOCKS_PER_DIMENSION = SSIM_FINGERPRINT_SIZE / SSIM_BLOCK_SIZE; // 8x8 = 64 blocks total
-const SSIM_SIMILARITY_THRESHOLD = 0.85;   // Default similarity threshold for SSIM fingerprint comparison
+const SSIM_SIMILARITY_THRESHOLD = 0.95;   // Default similarity threshold for SSIM fingerprint comparison
 
 // Fingerprint Storage Management
 const fingerprintStorageDir = path.join(app.getPath('userData'), 'fingerprints');
 const fingerprintIndexFile = path.join(fingerprintStorageDir, 'index.json');
 
+// Flag to prevent recursive initialization
+let isInitializingFingerprints = false;
+
 /**
- * Ensure fingerprint storage directory exists
+ * Ensure fingerprint storage directory exists and initialize preset fingerprints
  */
 function ensureFingerprintStorageExists() {
   try {
@@ -598,8 +605,216 @@ function ensureFingerprintStorageExists() {
       };
       fs.writeFileSync(fingerprintIndexFile, JSON.stringify(initialIndex, null, 2));
     }
+    
+    // Initialize preset fingerprints only if not already initializing to prevent recursion
+    if (!isInitializingFingerprints) {
+      initializePresetFingerprints();
+    }
+    
   } catch (error) {
     console.error('Error ensuring fingerprint storage exists:', error);
+  }
+}
+
+/**
+ * Get the preset fingerprints directory path
+ * @returns {string} Preset fingerprints directory path
+ */
+function getPresetFingerprintsDir() {
+  if (app.isPackaged) {
+    // In production: use resources/assets/fp
+    if (process.platform === 'win32') {
+      // Windows: resources/assets/fp
+      return path.join(process.resourcesPath, 'assets', 'fp');
+    } else if (process.platform === 'darwin') {
+      // macOS: Contents/Resources/assets/fp
+      return path.join(process.resourcesPath, 'assets', 'fp');
+    } else {
+      // Linux and others: resources/assets/fp
+      return path.join(process.resourcesPath, 'assets', 'fp');
+    }
+  } else {
+    // In development: use src/assets/fp relative to main.js
+    return path.join(__dirname, '..', 'assets', 'fp');
+  }
+}
+
+/**
+ * Load preset configuration from presets.json
+ * @returns {Object} Preset configuration object
+ */
+function loadPresetConfig() {
+  try {
+    const presetDir = getPresetFingerprintsDir();
+    const configPath = path.join(presetDir, 'presets.json');
+    
+    if (fs.existsSync(configPath)) {
+      const configData = fs.readFileSync(configPath, 'utf8');
+      return JSON.parse(configData);
+    }
+    
+    // Return default config if file doesn't exist
+    return {
+      version: "1.0.0",
+      description: "预置指纹配置文件",
+      presets: {},
+      defaultThreshold: SSIM_SIMILARITY_THRESHOLD
+    };
+  } catch (error) {
+    console.error('Error loading preset config:', error);
+    return {
+      version: "1.0.0", 
+      presets: {},
+      defaultThreshold: SSIM_SIMILARITY_THRESHOLD
+    };
+  }
+}
+
+/**
+ * Initialize preset fingerprints - copy from assets to user storage and configure
+ */
+function initializePresetFingerprints() {
+  // Prevent recursive calls
+  if (isInitializingFingerprints) {
+    return;
+  }
+  
+  try {
+    isInitializingFingerprints = true;
+    
+    const presetDir = getPresetFingerprintsDir();
+    
+    // Check if preset directory exists
+    if (!fs.existsSync(presetDir)) {
+      console.log('No preset fingerprints directory found, skipping initialization');
+      return;
+    }
+    
+    // Load preset configuration
+    const presetConfig = loadPresetConfig();
+    
+    // Get version file to track preset version
+    const versionFile = path.join(fingerprintStorageDir, 'preset_version.txt');
+    const currentVersion = getPresetVersion();
+    
+    let installedVersion = '0';
+    if (fs.existsSync(versionFile)) {
+      installedVersion = fs.readFileSync(versionFile, 'utf8').trim();
+    }
+    
+    // Only initialize if version changed or first time
+    if (installedVersion !== currentVersion) {
+      console.log(`Initializing preset fingerprints (version ${installedVersion} -> ${currentVersion})`);
+      
+      // Get all .fp files from preset directory
+      const presetFiles = fs.readdirSync(presetDir)
+        .filter(file => file.endsWith('.fp'))
+        .map(file => ({
+          filename: file,
+          name: path.basename(file, '.fp'),
+          sourcePath: path.join(presetDir, file)
+        }));
+      
+      if (presetFiles.length > 0) {
+        const index = loadFingerprintIndex();
+        const config = loadConfig();
+        
+        // Ensure excludeFingerprints array exists
+        if (!config.excludeFingerprints) {
+          config.excludeFingerprints = [];
+        }
+        
+        for (const preset of presetFiles) {
+          const presetId = `preset_${preset.name}`;
+          const targetPath = getFingerprintFilePath(presetId);
+          
+          // Copy preset file to storage
+          fs.copyFileSync(preset.sourcePath, targetPath);
+          
+          // Get preset configuration for this fingerprint
+          const presetInfo = presetConfig.presets[preset.name];
+          const presetName = presetInfo?.name || `[预置] ${preset.name.replace(/_/g, ' ')}`;
+          const presetThreshold = presetInfo?.threshold || presetConfig.defaultThreshold || SSIM_SIMILARITY_THRESHOLD;
+          
+          // Add to index
+          const fileStats = fs.statSync(targetPath);
+          index.fingerprints[presetId] = {
+            id: presetId,
+            name: presetName,
+            threshold: presetThreshold,
+            sourcePath: null, // Mark as preset
+            filePath: targetPath,
+            size: fileStats.size,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            fingerprint: {
+              version: 1,
+              preset: true
+            }
+          };
+          
+          // Add to exclude list if not already present
+          if (!config.excludeFingerprints.includes(presetId)) {
+            config.excludeFingerprints.push(presetId);
+          }
+          
+          if (presetInfo) {
+            console.log(`Initialized preset ${preset.name}: ${presetName} (threshold: ${presetThreshold})`);
+          } else {
+            console.log(`Initialized preset ${preset.name} with default threshold: ${presetThreshold}`);
+          }
+        }
+        
+        // Save updated index and config without triggering recursion
+        saveFingerprintIndexDirect(index);
+        saveConfig(config);
+        
+        console.log(`Initialized ${presetFiles.length} preset fingerprints`);
+      }
+      
+      // Update version file
+      fs.writeFileSync(versionFile, currentVersion);
+    }
+    
+  } catch (error) {
+    console.error('Error initializing preset fingerprints:', error);
+  } finally {
+    isInitializingFingerprints = false;
+  }
+}
+
+/**
+ * Get current preset version (based on app version and preset files)
+ * @returns {string} Version string
+ */
+function getPresetVersion() {
+  try {
+    const appVersion = app.getVersion();
+    const presetDir = getPresetFingerprintsDir();
+    
+    if (!fs.existsSync(presetDir)) {
+      return `${appVersion}_no_presets`;
+    }
+    
+    // Include file count and modification times in version
+    const presetFiles = fs.readdirSync(presetDir).filter(f => f.endsWith('.fp'));
+    
+    // Include config file modification time if it exists
+    const configPath = path.join(presetDir, 'presets.json');
+    let configInfo = '';
+    if (fs.existsSync(configPath)) {
+      const configStats = fs.statSync(configPath);
+      configInfo = `config:${configStats.mtime.getTime()}`;
+    }
+    
+    const fileInfo = presetFiles.map(f => {
+      const stats = fs.statSync(path.join(presetDir, f));
+      return `${f}:${stats.mtime.getTime()}`;
+    }).concat(configInfo ? [configInfo] : []).join('|');
+    
+    return `${appVersion}_${presetFiles.length}_${Buffer.from(fileInfo).toString('base64').substring(0, 8)}`;
+  } catch (error) {
+    return `${app.getVersion()}_error`;
   }
 }
 
@@ -630,7 +845,10 @@ function getFingerprintFilePath(id) {
  */
 function loadFingerprintIndex() {
   try {
-    ensureFingerprintStorageExists();
+    // Only ensure storage exists if not currently initializing to prevent recursion
+    if (!isInitializingFingerprints) {
+      ensureFingerprintStorageExists();
+    }
     
     if (fs.existsSync(fingerprintIndexFile)) {
       const indexData = fs.readFileSync(fingerprintIndexFile, 'utf8');
@@ -691,6 +909,22 @@ function validateAndCleanIndex(index) {
 }
 
 /**
+ * Save fingerprint index directly without triggering sync (for internal use)
+ * @param {Object} index - Fingerprint index
+ * @returns {boolean} Success status
+ */
+function saveFingerprintIndexDirect(index) {
+  try {
+    ensureFingerprintStorageExists();
+    fs.writeFileSync(fingerprintIndexFile, JSON.stringify(index, null, 2));
+    return true;
+  } catch (error) {
+    console.error('Error saving fingerprint index directly:', error);
+    return false;
+  }
+}
+
+/**
  * Save fingerprint index and sync with config
  * @param {Object} index - Fingerprint index
  * @returns {boolean} Success status
@@ -700,8 +934,10 @@ function saveFingerprintIndex(index) {
     ensureFingerprintStorageExists();
     fs.writeFileSync(fingerprintIndexFile, JSON.stringify(index, null, 2));
     
-    // Sync with config to ensure consistency
-    syncFingerprintsWithConfig();
+    // Only sync if not currently initializing to prevent recursion
+    if (!isInitializingFingerprints) {
+      syncFingerprintsWithConfig();
+    }
     
     return true;
   } catch (error) {
@@ -2785,4 +3021,67 @@ async function calculateSSIM(img1, img2, metadata1, metadata2, preprocessedData)
     throw error;
   }
 }
+
+// Get preset fingerprints information
+ipcMain.handle('get-preset-fingerprints-info', async () => {
+  return new Promise((resolve, reject) => {
+    try {
+      const presetDir = getPresetFingerprintsDir();
+      const currentVersion = getPresetVersion();
+      
+      let presetFiles = [];
+      let dirExists = false;
+      
+      if (fs.existsSync(presetDir)) {
+        dirExists = true;
+        presetFiles = fs.readdirSync(presetDir)
+          .filter(file => file.endsWith('.fp'))
+          .map(file => ({
+            filename: file,
+            name: path.basename(file, '.fp'),
+            fullPath: path.join(presetDir, file)
+          }));
+      }
+      
+      // Get version file info
+      const versionFile = path.join(fingerprintStorageDir, 'preset_version.txt');
+      let installedVersion = '0';
+      if (fs.existsSync(versionFile)) {
+        installedVersion = fs.readFileSync(versionFile, 'utf8').trim();
+      }
+      
+      resolve({
+        success: true,
+        presetDir,
+        dirExists,
+        presetFiles,
+        currentVersion,
+        installedVersion,
+        needsUpdate: installedVersion !== currentVersion
+      });
+    } catch (error) {
+      reject(`Error getting preset fingerprints info: ${error.message}`);
+    }
+  });
+});
+
+// Get preset configuration for debugging
+ipcMain.handle('get-preset-config', async () => {
+  return new Promise((resolve, reject) => {
+    try {
+      const presetConfig = loadPresetConfig();
+      const presetDir = getPresetFingerprintsDir();
+      const configPath = path.join(presetDir, 'presets.json');
+      
+      resolve({
+        success: true,
+        config: presetConfig,
+        configPath,
+        configExists: fs.existsSync(configPath)
+      });
+    } catch (error) {
+      reject(`Error getting preset config: ${error.message}`);
+    }
+  });
+});
 

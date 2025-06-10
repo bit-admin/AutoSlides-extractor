@@ -215,7 +215,7 @@ btnSelectImageFingerprint.addEventListener('click', async () => {
         imagePath,
         store: true,
         name: `Fingerprint_${Date.now()}`,
-        threshold: 0.85
+        threshold: 0.95
       });
       if (result && result.success && result.id) {
         await addExcludeFingerprint(result.id, result.metadata.threshold);
@@ -431,13 +431,22 @@ async function updateExcludeFingerprintsList() {
         nameDisplay.className = 'fingerprint-name-display';
         const fullName = fingerprintData.name || fingerprintData.id || 'Unknown Fingerprint';
         
+        // Check if this is a preset fingerprint
+        const isPreset = fingerprintData.id.startsWith('preset_') || 
+                         (fingerprintData.fingerprint && fingerprintData.fingerprint.preset);
+        
+        // Add preset indicator if applicable
+        if (isPreset) {
+          nameDisplay.classList.add('preset-fingerprint');
+        }
+        
         // Truncate long names with ellipsis
         if (fullName.length > 25) {
           nameDisplay.textContent = fullName.substring(0, 22) + '...';
           nameDisplay.title = fullName; // Show full name on hover
         } else {
           nameDisplay.textContent = fullName;
-          nameDisplay.title = `Fingerprint ID: ${fingerprintData.id}`;
+          nameDisplay.title = `Fingerprint ID: ${fingerprintData.id}${isPreset ? ' (Preset Fingerprint)' : ''}`;
         }
         
         nameCell.appendChild(nameDisplay);
@@ -448,7 +457,7 @@ async function updateExcludeFingerprintsList() {
         
         const thresholdDisplay = document.createElement('div');
         thresholdDisplay.className = 'threshold-display';
-        const thresholdValue = fingerprintData.threshold || 0.85;
+        const thresholdValue = fingerprintData.threshold || 0.95;
         thresholdDisplay.textContent = thresholdValue.toFixed(2);
         thresholdDisplay.title = 'Click to edit SSIM similarity threshold (0.0 - 1.0)';
         
@@ -482,7 +491,22 @@ async function updateExcludeFingerprintsList() {
           <line x1="14" y1="11" x2="14" y2="17"/>
         </svg>
       `;
-      deleteBtn.onclick = () => removeExcludeFingerprint(fingerprintData.id);
+      
+      // Check if this is a preset fingerprint (starts with 'preset_' or has preset flag)
+      const isPresetFingerprint = fingerprintData.id.startsWith('preset_') || 
+                       (fingerprintData.fingerprint && fingerprintData.fingerprint.preset);
+      
+      if (isPresetFingerprint) {
+        // For preset fingerprints, disable delete button and show different tooltip
+        deleteBtn.className = 'row-action-button delete disabled';
+        deleteBtn.title = 'Cannot delete preset fingerprint';
+        deleteBtn.disabled = true;
+        deleteBtn.onclick = () => {
+          alert('Preset fingerprints cannot be deleted. If you need to remove them, please remove them from config.json.');
+        };
+      } else {
+        deleteBtn.onclick = () => removeExcludeFingerprint(fingerprintData.id);
+      }
       
       actionsCell.appendChild(editBtn);
       actionsCell.appendChild(deleteBtn);
@@ -529,7 +553,7 @@ async function updateExcludeFingerprintsList() {
 }
 }
 
-async function addExcludeFingerprint(fingerprintId, threshold = 0.85) {
+async function addExcludeFingerprint(fingerprintId, threshold = 0.95) {
   try {
     // Check if fingerprint already exists in exclude list
     const excludeResult = await window.electronAPI.getExcludeFingerprints();
@@ -1159,7 +1183,7 @@ async function enterFingerprintEditMode(fingerprintId, row) {
     }
     
     const currentName = fingerprintData.metadata.name || fingerprintId || 'Unknown Fingerprint';
-    const currentThreshold = fingerprintData.metadata.threshold || 0.85;
+    const currentThreshold = fingerprintData.metadata.threshold || 0.95;
     
     // Mark row as editing
     row.classList.add('editing');
@@ -1236,7 +1260,7 @@ async function saveFingerprintEdit(fingerprintId, row) {
   const thresholdInput = row.querySelector('.threshold-input-edit');
   
   const newName = nameInput.value.trim();
-  const newThreshold = parseFloat(thresholdInput.value) || 0.85;
+  const newThreshold = parseFloat(thresholdInput.value) || 0.95;
   
   // Validate name
   if (!newName || newName.length < 1) {
@@ -1307,7 +1331,7 @@ btnTestSimilarity.addEventListener('click', async () => {
       const result = await window.electronAPI.calculateImageSSIMFingerprint({
         imagePath,
         store: false, // Don't store, just calculate for testing
-        threshold: 0.85
+        threshold: 0.95
       });
       
       if (result && result.success) {
@@ -1330,7 +1354,7 @@ btnTestSimilarity.addEventListener('click', async () => {
               
               if (similarity.success) {
                 const similarityValue = similarity.similarity;
-                const threshold = excludeItem.threshold || 0.85;
+                const threshold = excludeItem.threshold || 0.95;
                 
                 // Check if this is a match based on threshold
                 if (similarityValue >= threshold) {
@@ -1433,3 +1457,54 @@ Total matches: ${matchCount}/${excludeFingerprints.length}`;
     statusText.textContent = 'Error testing image similarity';
   }
 });
+
+// Test preset fingerprints initialization - for debugging
+async function testPresetFingerprints() {
+  try {
+    const info = await window.electronAPI.getPresetFingerprintsInfo();
+    console.log('Preset Fingerprints Info:', info);
+    
+    if (info.success) {
+      console.log(`Preset directory: ${info.presetDir}`);
+      console.log(`Directory exists: ${info.dirExists}`);
+      console.log(`Preset files found: ${info.presetFiles.length}`);
+      console.log(`Current version: ${info.currentVersion}`);
+      console.log(`Installed version: ${info.installedVersion}`);
+      console.log(`Needs update: ${info.needsUpdate}`);
+      
+      if (info.presetFiles.length > 0) {
+        console.log('Preset files:', info.presetFiles);
+      }
+    }
+    
+    // Also test preset configuration
+    try {
+      const configInfo = await window.electronAPI.getPresetConfig();
+      console.log('Preset Config Info:', configInfo);
+      
+      if (configInfo.success) {
+        console.log(`Config file path: ${configInfo.configPath}`);
+        console.log(`Config file exists: ${configInfo.configExists}`);
+        console.log(`Config content:`, configInfo.config);
+        
+        if (configInfo.config.presets) {
+          const presetNames = Object.keys(configInfo.config.presets);
+          console.log(`Configured presets: ${presetNames.join(', ')}`);
+          
+          presetNames.forEach(name => {
+            const preset = configInfo.config.presets[name];
+            console.log(`  - ${name}: ${preset.name} (threshold: ${preset.threshold})`);
+          });
+        }
+      }
+    } catch (configError) {
+      console.warn('Failed to get preset config:', configError);
+    }
+    
+  } catch (error) {
+    console.error('Error testing preset fingerprints:', error);
+  }
+}
+
+// Add to global scope for console testing
+window.testPresetFingerprints = testPresetFingerprints;

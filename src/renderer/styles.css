@@ -1508,6 +1508,18 @@ body.dark-mode .help-text {
   color: #b91c1c;
 }
 
+.row-action-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: #9ca3af;
+}
+
+.row-action-button.disabled:hover {
+  background-color: transparent;
+  color: #9ca3af;
+  transform: none;
+}
+
 /* Table controls */
 .fingerprint-table-controls {
   padding: 12px 16px;
@@ -1566,83 +1578,26 @@ body.dark-mode .help-text {
   border-color: rgba(44, 123, 229, 0.2);
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .fingerprint-table th,
-  .fingerprint-table td {
-    padding: 8px 12px;
-    font-size: 13px;
-  }
-  
-  .fingerprint-name-display {
-    max-width: 120px;
-  }
-  
-  .threshold-display {
-    min-width: 50px;
-  }
-  
-  .fingerprint-table-controls {
-    flex-direction: column;
-  }
-  
-  .table-action-button {
-    justify-content: center;
+/* Preset fingerprint styling */
+.fingerprint-name-display.preset-fingerprint {
+  position: relative;
+  font-weight: 600;
+  color: #059669;
+}
+
+.fingerprint-name-display.preset-fingerprint::before {
+  font-size: 11px;
+  margin-right: 4px;
+  opacity: 0.8;
+}
+
+/* Dark mode preset fingerprint styling */
+@media (prefers-color-scheme: dark) {
+  .fingerprint-name-display.preset-fingerprint {
+    color: #34d399;
   }
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .fingerprint-table-container {
-    background: #2d3748;
-    border-color: #4a5568;
-  }
-
-  .fingerprint-table thead {
-    background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
-  }
-
-  .fingerprint-table th {
-    color: #e2e8f0;
-    border-bottom-color: #4a5568;
-  }
-
-  .fingerprint-table td {
-    border-bottom-color: #4a5568;
-  }
-
-  .fingerprint-table tbody tr:hover {
-    background-color: #4a5568;
-  }
-
-  .fingerprint-name-display {
-    color: #e2e8f0;
-  }
-
-  .fingerprint-name-display:hover {
-    color: #90cdf4;
-  }
-
-  .threshold-display {
-    color: #e2e8f0;
-  }
-
-  .threshold-display:hover {
-    background-color: #4a5568;
-    color: #90cdf4;
-  }
-
-  .fingerprint-table-controls {
-    background: #4a5568;
-    border-top-color: #2d3748;
-  }
-
-  .fingerprint-empty {
-    color: #a0aec0;
-    background: #4a5568;
-  }
-
-  .fingerprint-table tbody tr.editing {
-    background-color: rgba(66, 153, 225, 0.1);
-  }
+body.dark-mode .fingerprint-name-display.preset-fingerprint {
+  color: #34d399;
 }

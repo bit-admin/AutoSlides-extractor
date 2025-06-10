@@ -1,0 +1,17 @@
+{
+  "version": "1.0.0",
+  "description": "Preset Fingerprint Configuration File",
+  "presets": {
+    "NO_SIGNAL": {
+      "name": "[PRESET] NO SIGNAL",
+      "threshold": 0.95,
+      "description": "Used to identify no signal screen pages in videos"
+    },
+    "BLUE_SCREEN": {
+      "name": "[PRESET] BLUE SCREEN",
+      "threshold": 0.95,
+      "description": ""
+    }
+  },
+  "defaultThreshold": 0.95
+}

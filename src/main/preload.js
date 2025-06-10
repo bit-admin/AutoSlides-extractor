@@ -81,5 +81,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   removeFingerprintFromExcludes: (id) => ipcRenderer.invoke('remove-fingerprint-from-excludes', id),
   exportFingerprint: (options) => ipcRenderer.invoke('export-fingerprint', options),
   importFingerprint: (options) => ipcRenderer.invoke('import-fingerprint', options),
-  openFingerprintStorageDir: () => ipcRenderer.invoke('open-fingerprint-storage-dir')
+  openFingerprintStorageDir: () => ipcRenderer.invoke('open-fingerprint-storage-dir'),
+  getPresetFingerprintsInfo: () => ipcRenderer.invoke('get-preset-fingerprints-info'),
+  getPresetConfig: () => ipcRenderer.invoke('get-preset-config')
 });

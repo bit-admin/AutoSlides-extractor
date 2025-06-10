@@ -47,6 +47,13 @@
       ],
       "files": [
         "!node_modules/ffprobe-static/bin/darwin/x64"
+      ],
+      "extraResources": [
+        {
+          "from": "src/assets",
+          "to": "assets",
+          "filter": ["**/*"]
+        }
       ]
     },
     "dmg": {
@@ -66,6 +73,11 @@
         {
           "from": "build/binaries/win-${arch}",
           "to": "bin",
+          "filter": ["**/*"]
+        },
+        {
+          "from": "src/assets",
+          "to": "assets",
           "filter": ["**/*"]
         }
       ]
