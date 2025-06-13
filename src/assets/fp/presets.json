@@ -23,6 +23,17 @@
         "height": null,
         "alignment": "center"
       }
+    },
+    "WALL_PAPER": {
+      "name": "[PRESET] WALL PAPER",
+      "threshold": 0.95,
+      "description": "Used to identify wall paper pages in videos",
+      "regionConfig": {
+        "enabled": true,
+        "width": 1154,
+        "height": 740,
+        "alignment": "center"
+      }
     }
   },
   "defaultThreshold": 0.95,

@@ -413,16 +413,6 @@ async function saveAdvancedSettings() {
   }
 }
 
-// Keyboard event handling for the modal
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && advancedSettingsModal.style.display === 'flex') {
-    hideAdvancedSettings();
-  }
-  if (e.key === 'Escape' && regionConfigModal.style.display === 'flex') {
-    hideRegionConfigModal();
-  }
-});
-
 // ===== Region Configuration Modal Functions =====
 
 function showRegionConfigModal() {
