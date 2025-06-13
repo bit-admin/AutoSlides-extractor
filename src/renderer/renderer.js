@@ -131,6 +131,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch (error) {
     console.error('Failed to load configuration:', error);
   }
+  
+  // Add window resize listener to update region preview
+  let resizeTimeout;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      // Update region preview if image is loaded
+      if (currentImageData) {
+        const mainImg = regionPreviewImage.querySelector('img');
+        if (mainImg && mainImg.naturalWidth && mainImg.naturalHeight) {
+          updateRegionPreview(mainImg.naturalWidth, mainImg.naturalHeight);
+        }
+      }
+    }, 150); // Debounce resize events
+  });
 });
 
 // Event Listener
@@ -2219,6 +2234,9 @@ function showFullscreenPreview() {
   const info = document.createElement('div');
   info.className = 'fullscreen-info';
   
+  // Create controls panel
+  const controls = createFullscreenControls(img, overlay, bounds, info);
+  
   // Wait for image to load, then calculate positions
   img.onload = function() {
     updateFullscreenPreview(img, overlay, bounds, info);
@@ -2231,6 +2249,7 @@ function showFullscreenPreview() {
   fullscreenModal.appendChild(content);
   fullscreenModal.appendChild(closeBtn);
   fullscreenModal.appendChild(info);
+  fullscreenModal.appendChild(controls);
   
   // Add to DOM
   document.body.appendChild(fullscreenModal);
@@ -2328,6 +2347,182 @@ function updateFullscreenPreview(img, overlay, bounds, info) {
     <div class="info-title">Region: ${regionBounds.width}×${regionBounds.height}</div>
     <div class="info-details">Position: (${regionBounds.x}, ${regionBounds.y}) • Alignment: ${alignment} • Coverage: ${coverage}%</div>
   `;
+}
+
+// Create fullscreen controls panel
+function createFullscreenControls(img, overlay, bounds, info) {
+  const controls = document.createElement('div');
+  controls.className = 'fullscreen-controls';
+  
+  // Only show controls if region comparison is enabled
+  if (!enableRegionComparison.checked) {
+    controls.style.display = 'none';
+    return controls;
+  }
+  
+  // Controls header with toggle button
+  const header = document.createElement('div');
+  header.style.position = 'relative';
+  
+  const title = document.createElement('h3');
+  title.textContent = 'Region Settings';
+  
+  const toggleBtn = document.createElement('button');
+  toggleBtn.className = 'fullscreen-toggle-btn';
+  toggleBtn.innerHTML = '▲';
+  toggleBtn.title = 'Toggle controls panel';
+  
+  header.appendChild(title);
+  header.appendChild(toggleBtn);
+  
+  // Controls content container
+  const controlsContent = document.createElement('div');
+  controlsContent.className = 'fullscreen-controls-content';
+  controlsContent.innerHTML = `
+    <div class="fullscreen-control-group">
+      <label for="fullscreenAlignment">Alignment</label>
+      <select id="fullscreenAlignment">
+        <option value="top-left">Top Left</option>
+        <option value="top-center">Top Center</option>
+        <option value="top-right">Top Right</option>
+        <option value="center-left">Center Left</option>
+        <option value="center">Center</option>
+        <option value="center-right">Center Right</option>
+        <option value="bottom-left">Bottom Left</option>
+        <option value="bottom-center">Bottom Center</option>
+        <option value="bottom-right">Bottom Right</option>
+      </select>
+    </div>
+    
+    <div class="fullscreen-control-group">
+      <label for="fullscreenWidth">Region Width (pixels)</label>
+      <div class="fullscreen-slider-group">
+        <input type="number" id="fullscreenWidth" min="100" max="3840" step="1" value="800">
+        <input type="range" id="fullscreenWidthSlider" min="100" max="3840" step="1" value="800">
+      </div>
+    </div>
+    
+    <div class="fullscreen-control-group">
+      <label for="fullscreenHeight">Region Height (pixels)</label>
+      <div class="fullscreen-slider-group">
+        <input type="number" id="fullscreenHeight" min="100" max="2160" step="1" value="600">
+        <input type="range" id="fullscreenHeightSlider" min="100" max="2160" step="1" value="600">
+      </div>
+    </div>
+  `;
+  
+  // Toggle functionality
+  let isCollapsed = false;
+  toggleBtn.addEventListener('click', () => {
+    isCollapsed = !isCollapsed;
+    if (isCollapsed) {
+      controls.classList.add('collapsed');
+      toggleBtn.innerHTML = '▼';
+      toggleBtn.title = 'Expand controls panel';
+    } else {
+      controls.classList.remove('collapsed');
+      toggleBtn.innerHTML = '▲';
+      toggleBtn.title = 'Collapse controls panel';
+    }
+  });
+  
+  controls.appendChild(header);
+  controls.appendChild(controlsContent);
+  
+  // Get the control elements
+  const fsAlignment = controls.querySelector('#fullscreenAlignment');
+  const fsWidth = controls.querySelector('#fullscreenWidth');
+  const fsWidthSlider = controls.querySelector('#fullscreenWidthSlider');
+  const fsHeight = controls.querySelector('#fullscreenHeight');
+  const fsHeightSlider = controls.querySelector('#fullscreenHeightSlider');
+  
+  // Sync with main controls
+  fsAlignment.value = regionAlignment.value;
+  fsWidth.value = regionWidth.value;
+  fsWidthSlider.value = regionWidth.value;
+  fsHeight.value = regionHeight.value;
+  fsHeightSlider.value = regionHeight.value;
+  
+  // Add event listeners for fullscreen controls
+  fsAlignment.addEventListener('change', () => {
+    regionAlignment.value = fsAlignment.value;
+    updateFullscreenPreview(img, overlay, bounds, info);
+    // Update main preview as well
+    if (currentImageData) {
+      const mainImg = regionPreviewImage.querySelector('img');
+      if (mainImg) {
+        updateRegionPreview(mainImg.naturalWidth, mainImg.naturalHeight);
+      }
+    }
+  });
+  
+  // Width controls
+  fsWidth.addEventListener('input', () => {
+    const value = parseInt(fsWidth.value);
+    if (value >= 100 && value <= 3840) {
+      fsWidthSlider.value = value;
+      regionWidth.value = value;
+      regionWidthSlider.value = value;
+      updateFullscreenPreview(img, overlay, bounds, info);
+      // Update main preview as well
+      if (currentImageData) {
+        const mainImg = regionPreviewImage.querySelector('img');
+        if (mainImg) {
+          updateRegionPreview(mainImg.naturalWidth, mainImg.naturalHeight);
+        }
+      }
+    }
+  });
+  
+  fsWidthSlider.addEventListener('input', () => {
+    const value = parseInt(fsWidthSlider.value);
+    fsWidth.value = value;
+    regionWidth.value = value;
+    regionWidthSlider.value = value;
+    updateFullscreenPreview(img, overlay, bounds, info);
+    // Update main preview as well
+    if (currentImageData) {
+      const mainImg = regionPreviewImage.querySelector('img');
+      if (mainImg) {
+        updateRegionPreview(mainImg.naturalWidth, mainImg.naturalHeight);
+      }
+    }
+  });
+  
+  // Height controls
+  fsHeight.addEventListener('input', () => {
+    const value = parseInt(fsHeight.value);
+    if (value >= 100 && value <= 2160) {
+      fsHeightSlider.value = value;
+      regionHeight.value = value;
+      regionHeightSlider.value = value;
+      updateFullscreenPreview(img, overlay, bounds, info);
+      // Update main preview as well
+      if (currentImageData) {
+        const mainImg = regionPreviewImage.querySelector('img');
+        if (mainImg) {
+          updateRegionPreview(mainImg.naturalWidth, mainImg.naturalHeight);
+        }
+      }
+    }
+  });
+  
+  fsHeightSlider.addEventListener('input', () => {
+    const value = parseInt(fsHeightSlider.value);
+    fsHeight.value = value;
+    regionHeight.value = value;
+    regionHeightSlider.value = value;
+    updateFullscreenPreview(img, overlay, bounds, info);
+    // Update main preview as well
+    if (currentImageData) {
+      const mainImg = regionPreviewImage.querySelector('img');
+      if (mainImg) {
+        updateRegionPreview(mainImg.naturalWidth, mainImg.naturalHeight);
+      }
+    }
+  });
+  
+  return controls;
 }
 
 // Save configuration
