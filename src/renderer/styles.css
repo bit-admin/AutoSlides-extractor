@@ -2179,7 +2179,7 @@ body.dark-mode .similarity-test-close-btn:hover {
 .region-preview-image {
   position: relative;
   width: 100%;
-  height: 200px;
+  height: 245px;
   background-color: #f1f5f9;
   display: flex;
   align-items: center;
@@ -2260,23 +2260,12 @@ body.dark-mode .region-preview-info .preview-details {
   color: #d1d5db;
 }
 
-/* Responsive adjustments for region configuration */
-@media (max-width: 768px) {
-  .region-config-modal {
-    max-width: 95vw;
-    margin: 10px;
-  }
-  
-  .region-preview-image {
-    height: 150px;
-  }
-}
-
 /* Region Configuration Slider Styles */
 .slider-input-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  position: relative;
 }
 
 .region-slider {
@@ -2355,67 +2344,8 @@ body.dark-mode .region-preview-info .preview-details {
   box-shadow: 0 0 0 3px rgba(44, 123, 229, 0.2);
 }
 
-/* Add visual progress for slider */
-.region-slider {
-  background: linear-gradient(to right, #2c7be5 0%, #2c7be5 var(--slider-progress, 0%), #e2e8f0 var(--slider-progress, 0%), #e2e8f0 100%);
-}
-
 /* Enhanced slider thumb with value tooltip */
 .slider-input-group {
   position: relative;
-}
-
-.slider-input-group::before {
-  content: '';
-  position: absolute;
-  top: -8px;
-  left: var(--thumb-position, 0%);
-  transform: translateX(-50%);
-  background: #2c7be5;
-  color: white;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 500;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  pointer-events: none;
-  z-index: 10;
-}
-
-.slider-input-group:hover::before {
-  opacity: 1;
-}
-
-/* Improved visual feedback for active slider */
-.region-slider:active {
-  background: linear-gradient(to right, #1a68d1 0%, #1a68d1 var(--slider-progress, 0%), #cbd5e0 var(--slider-progress, 0%), #cbd5e0 100%);
-}
-
-/* Dark mode adjustments for enhanced slider */
-@media (prefers-color-scheme: dark) {
-  .region-slider {
-    background: linear-gradient(to right, #3182ce 0%, #3182ce var(--slider-progress, 0%), #4a5568 var(--slider-progress, 0%), #4a5568 100%);
-  }
-  
-  .region-slider:active {
-    background: linear-gradient(to right, #2563eb 0%, #2563eb var(--slider-progress, 0%), #6b7280 var(--slider-progress, 0%), #6b7280 100%);
-  }
-  
-  .slider-input-group::before {
-    background: #3182ce;
-  }
-}
-
-body.dark-mode .region-slider {
-  background: linear-gradient(to right, #3182ce 0%, #3182ce var(--slider-progress, 0%), #4a5568 var(--slider-progress, 0%), #4a5568 100%);
-}
-
-body.dark-mode .region-slider:active {
-  background: linear-gradient(to right, #2563eb 0%, #2563eb var(--slider-progress, 0%), #6b7280 var(--slider-progress, 0%), #6b7280 100%);
-}
-
-body.dark-mode .slider-input-group::before {
-  background: #3182ce;
 }
 
