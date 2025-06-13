@@ -2537,6 +2537,9 @@ body.dark-mode .similarity-test-close-btn:hover {
   color: #60a5fa;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .fullscreen-control-group {
@@ -2645,9 +2648,6 @@ body.dark-mode .similarity-test-close-btn:hover {
 }
 
 .fullscreen-toggle-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
   background: rgba(255, 255, 255, 0.1);
   border: none;
   border-radius: 4px;
@@ -2659,8 +2659,8 @@ body.dark-mode .similarity-test-close-btn:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  z-index: 11;
+  font-size: 12px;
+  flex-shrink: 0;
 }
 
 .fullscreen-toggle-btn:hover {
@@ -2972,38 +2972,6 @@ body.dark-mode .fullscreen-preview-btn:hover {
 .fullscreen-control-group input[type="range"]::-moz-range-thumb:hover {
   background: #3b82f6;
   transform: scale(1.1);
-}
-
-.fullscreen-toggle-btn {
-  position: absolute;
-  top: 20px;
-  left: 320px;
-  background: rgba(0, 0, 0, 0.7);
-  border: none;
-  border-radius: 50%;
-  color: white;
-  width: 36px;
-  height: 36px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  z-index: 11;
-}
-
-.fullscreen-toggle-btn:hover {
-  background: rgba(0, 0, 0, 0.9);
-  transform: scale(1.05);
-}
-
-.fullscreen-controls.collapsed {
-  transform: translateX(-260px);
-}
-
-.fullscreen-controls.collapsed .fullscreen-toggle-btn {
-  left: 40px;
 }
 
 /* Dark mode styles for Region Configuration sliders */

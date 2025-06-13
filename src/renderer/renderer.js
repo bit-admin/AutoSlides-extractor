@@ -2361,19 +2361,13 @@ function createFullscreenControls(img, overlay, bounds, info) {
   }
   
   // Controls header with toggle button
-  const header = document.createElement('div');
-  header.style.position = 'relative';
-  
   const title = document.createElement('h3');
-  title.textContent = 'Region Settings';
+  title.innerHTML = `
+    Region Settings
+    <button class="fullscreen-toggle-btn" title="Collapse controls panel">▲</button>
+  `;
   
-  const toggleBtn = document.createElement('button');
-  toggleBtn.className = 'fullscreen-toggle-btn';
-  toggleBtn.innerHTML = '▲';
-  toggleBtn.title = 'Toggle controls panel';
-  
-  header.appendChild(title);
-  header.appendChild(toggleBtn);
+  const toggleBtn = title.querySelector('.fullscreen-toggle-btn');
   
   // Controls content container
   const controlsContent = document.createElement('div');
@@ -2426,7 +2420,7 @@ function createFullscreenControls(img, overlay, bounds, info) {
     }
   });
   
-  controls.appendChild(header);
+  controls.appendChild(title);
   controls.appendChild(controlsContent);
   
   // Get the control elements
