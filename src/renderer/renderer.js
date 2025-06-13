@@ -65,6 +65,7 @@ const regionPreviewImage = regionPreview.querySelector('.region-preview-image');
 const regionPreviewOverlay = regionPreview.querySelector('.region-preview-overlay');
 const regionPreviewBounds = regionPreview.querySelector('.region-preview-bounds');
 const regionPreviewInfo = regionPreview.querySelector('.region-preview-info');
+const btnFullscreenPreview = document.getElementById('btnFullscreenPreview');
 
 // Global variable
 let selectedVideoPath = '';
@@ -87,6 +88,10 @@ let currentRegionConfig = {
   height: 600,
   alignment: 'center'
 };
+
+// Fullscreen preview variables
+let fullscreenModal = null;
+let currentImageData = null;
 
 // Progress Control Related Variables
 let currentPhase = ''; // 'extracting' or 'analyzing'
@@ -430,8 +435,10 @@ function showRegionConfigModal() {
 
 function hideRegionConfigModal(clearImagePath = true) {
   regionConfigModal.style.display = 'none';
+  btnFullscreenPreview.style.display = 'none';
   if (clearImagePath) {
     currentImagePath = '';
+    currentImageData = null;
   }
 }
 
@@ -447,6 +454,10 @@ async function loadImagePreview() {
       regionPreviewImage.appendChild(img);
       regionPreviewImage.appendChild(regionPreviewOverlay);
       regionPreviewImage.appendChild(regionPreviewBounds);
+      regionPreviewImage.appendChild(btnFullscreenPreview);
+      
+      // Show fullscreen button when image is loaded
+      btnFullscreenPreview.style.display = 'flex';
       
       // Update preview
       updateRegionPreview(img.naturalWidth, img.naturalHeight);
@@ -454,6 +465,7 @@ async function loadImagePreview() {
     
     // Load image data
     const imageData = await window.electronAPI.readFrameImage(currentImagePath);
+    currentImageData = imageData; // Store for fullscreen use
     img.src = imageData;
     img.style.maxWidth = '100%';
     img.style.maxHeight = '100%';
@@ -462,6 +474,7 @@ async function loadImagePreview() {
   } catch (error) {
     console.error('Failed to load image preview:', error);
     regionPreviewInfo.innerHTML = '<p>Failed to load image preview</p>';
+    btnFullscreenPreview.style.display = 'none';
   }
 }
 
@@ -2013,6 +2026,7 @@ async function runSimilarityTestWithRegion(excludeFingerprints, testRegionConfig
             const similarity = await window.electronAPI.compareSSIMFingerprints({
               fingerprint1: result.fingerprint,
               fingerprint2: storedResult.fingerprint
+
             });
             
             if (similarity.success) {
@@ -2165,53 +2179,155 @@ ${formatJsonValue('matchPercentage', jsonData.analysis.summary.matchPercentage, 
   }
 }
 
-// Test preset fingerprints initialization - for debugging
-async function testPresetFingerprints() {
-  try {
-    const info = await window.electronAPI.getPresetFingerprintsInfo();
-    console.log('Preset Fingerprints Info:', info);
-    
-    if (info.success) {
-      console.log(`Preset directory: ${info.presetDir}`);
-      console.log(`Directory exists: ${info.dirExists}`);
-      console.log(`Preset files found: ${info.presetFiles.length}`);
-      console.log(`Current version: ${info.currentVersion}`);
-      console.log(`Installed version: ${info.installedVersion}`);
-      console.log(`Needs update: ${info.needsUpdate}`);
-      
-      if (info.presetFiles.length > 0) {
-        console.log('Preset files:', info.presetFiles);
-      }
+// Fullscreen preview event listener
+btnFullscreenPreview.addEventListener('click', () => {
+  showFullscreenPreview();
+});
+
+// ===== Fullscreen Preview Functions =====
+
+function showFullscreenPreview() {
+  if (!currentImageData) return;
+  
+  // Create fullscreen modal
+  fullscreenModal = document.createElement('div');
+  fullscreenModal.className = 'fullscreen-modal';
+  
+  // Create content container
+  const content = document.createElement('div');
+  content.className = 'fullscreen-content';
+  
+  // Create image element
+  const img = document.createElement('img');
+  img.className = 'fullscreen-image';
+  img.src = currentImageData;
+  
+  // Create overlay and bounds for region preview
+  const overlay = document.createElement('div');
+  overlay.className = 'fullscreen-overlay';
+  
+  const bounds = document.createElement('div');
+  bounds.className = 'fullscreen-bounds';
+  
+  // Create close button
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'fullscreen-close-btn';
+  closeBtn.innerHTML = '&times;';
+  closeBtn.addEventListener('click', hideFullscreenPreview);
+  
+  // Create info panel
+  const info = document.createElement('div');
+  info.className = 'fullscreen-info';
+  
+  // Wait for image to load, then calculate positions
+  img.onload = function() {
+    updateFullscreenPreview(img, overlay, bounds, info);
+  };
+  
+  // Assemble the modal
+  content.appendChild(img);
+  content.appendChild(overlay);
+  content.appendChild(bounds);
+  fullscreenModal.appendChild(content);
+  fullscreenModal.appendChild(closeBtn);
+  fullscreenModal.appendChild(info);
+  
+  // Add to DOM
+  document.body.appendChild(fullscreenModal);
+  
+  // Add event listeners
+  fullscreenModal.addEventListener('click', (e) => {
+    if (e.target === fullscreenModal) {
+      hideFullscreenPreview();
     }
-    
-    // Also test preset configuration
-    try {
-      const configInfo = await window.electronAPI.getPresetConfig();
-      console.log('Preset Config Info:', configInfo);
-      
-      if (configInfo.success) {
-        console.log(`Config file path: ${configInfo.configPath}`);
-        console.log(`Config file exists: ${configInfo.configExists}`);
-        console.log(`Config content:`, configInfo.config);
-        
-        if (configInfo.config.presets) {
-          const presetNames = Object.keys(configInfo.config.presets);
-          console.log(`Configured presets: ${presetNames.join(', ')}`);
-          
-          presetNames.forEach(name => {
-            const preset = configInfo.config.presets[name];
-            console.log(`  - ${name}: ${preset.name} (threshold: ${preset.threshold})`);
-          });
-        }
-      }
-    } catch (configError) {
-      console.warn('Failed to get preset config:', configError);
-    }
-    
-  } catch (error) {
-    console.error('Error testing preset fingerprints:', error);
+  });
+  
+  // Add keyboard listener
+  document.addEventListener('keydown', handleFullscreenKeydown);
+}
+
+function hideFullscreenPreview() {
+  if (fullscreenModal) {
+    document.body.removeChild(fullscreenModal);
+    fullscreenModal = null;
+    document.removeEventListener('keydown', handleFullscreenKeydown);
   }
 }
 
-// Add to global scope for console testing
-window.testPresetFingerprints = testPresetFingerprints;
+function handleFullscreenKeydown(e) {
+  if (e.key === 'Escape') {
+    hideFullscreenPreview();
+  }
+}
+
+function updateFullscreenPreview(img, overlay, bounds, info) {
+  const imageWidth = img.naturalWidth;
+  const imageHeight = img.naturalHeight;
+  
+  if (!enableRegionComparison.checked) {
+    // Full image mode
+    overlay.style.display = 'none';
+    bounds.style.display = 'none';
+    
+    info.innerHTML = `
+      <div class="info-title">Full Image Comparison</div>
+      <div class="info-details">Image: ${imageWidth}×${imageHeight} • Coverage: 100%</div>
+    `;
+    return;
+  }
+  
+  // Region mode - calculate region bounds
+  const regionW = parseInt(regionWidth.value) || 800;
+  const regionH = parseInt(regionHeight.value) || 600;
+  const alignment = regionAlignment.value;
+  
+  const regionBounds = calculateRegionBounds(imageWidth, imageHeight, {
+    enabled: true,
+    width: regionW,
+    height: regionH,
+    alignment: alignment
+  });
+  
+  // Get image display dimensions
+  const imgRect = img.getBoundingClientRect();
+  const imgDisplayWidth = imgRect.width;
+  const imgDisplayHeight = imgRect.height;
+  
+  // Calculate scale
+  const scaleX = imgDisplayWidth / imageWidth;
+  const scaleY = imgDisplayHeight / imageHeight;
+  const scale = Math.min(scaleX, scaleY);
+  
+  // Calculate actual displayed image dimensions
+  const displayedImageWidth = imageWidth * scale;
+  const displayedImageHeight = imageHeight * scale;
+  
+  // Calculate offset to center the image
+  const offsetX = (imgDisplayWidth - displayedImageWidth) / 2;
+  const offsetY = (imgDisplayHeight - displayedImageHeight) / 2;
+  
+  // Calculate scaled region bounds
+  const scaledBounds = {
+    x: regionBounds.x * scale + offsetX,
+    y: regionBounds.y * scale + offsetY,
+    width: regionBounds.width * scale,
+    height: regionBounds.height * scale
+  };
+  
+  // Update overlay and bounds
+  overlay.style.display = 'block';
+  bounds.style.display = 'block';
+  bounds.style.left = scaledBounds.x + 'px';
+  bounds.style.top = scaledBounds.y + 'px';
+  bounds.style.width = scaledBounds.width + 'px';
+  bounds.style.height = scaledBounds.height + 'px';
+  
+  // Update info
+  const coverage = ((regionBounds.width * regionBounds.height) / (imageWidth * imageHeight) * 100).toFixed(1);
+  info.innerHTML = `
+    <div class="info-title">Region: ${regionBounds.width}×${regionBounds.height}</div>
+    <div class="info-details">Position: (${regionBounds.x}, ${regionBounds.y}) • Alignment: ${alignment} • Coverage: ${coverage}%</div>
+  `;
+}
+
+// Save configuration
