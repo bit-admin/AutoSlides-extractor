@@ -859,8 +859,8 @@ async function updateExcludeFingerprintsList() {
         }
         
         // Truncate long names with ellipsis
-        if (fullName.length > 25) {
-          nameDisplay.textContent = fullName.substring(0, 22) + '...';
+        if (fullName.length > 26) {
+          nameDisplay.textContent = fullName.substring(0, 23) + '...';
           nameDisplay.title = fullName; // Show full name on hover
         } else {
           nameDisplay.textContent = fullName;

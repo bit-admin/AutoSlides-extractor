@@ -707,7 +707,7 @@ function loadPresetConfig() {
     // Return default config if file doesn't exist
     return {
       version: "1.0.0",
-      description: "预置指纹配置文件",
+      description: "Preset Fingerprint Configuration File",
       presets: {},
       defaultThreshold: SSIM_SIMILARITY_THRESHOLD,
       defaultRegionConfig: DEFAULT_REGION_CONFIG
@@ -790,7 +790,7 @@ function initializePresetFingerprints() {
           
           // Get preset configuration for this fingerprint
           const presetInfo = presetConfig.presets[preset.name];
-          const presetName = presetInfo?.name || `[预置] ${preset.name.replace(/_/g, ' ')}`;
+          const presetName = presetInfo?.name || `[PRESET] ${preset.name.replace(/_/g, ' ')}`;
           const presetThreshold = presetInfo?.threshold || presetConfig.defaultThreshold || SSIM_SIMILARITY_THRESHOLD;
           const presetRegionConfig = presetInfo?.regionConfig || presetConfig.defaultRegionConfig || DEFAULT_REGION_CONFIG;
           
@@ -1232,15 +1232,35 @@ async function calculateSSIMFingerprint(imageBuffer, regionConfig = DEFAULT_REGI
     const imageProcessor = createImageProcessor(imageBuffer);
     const metadata = await imageProcessor.getMetadata();
     
+    if (DEBUG_MODE && regionConfig.enabled) {
+      console.log(`[SSIM Debug] Calculating fingerprint with region config:`, regionConfig);
+      console.log(`[SSIM Debug] Original image dimensions: ${metadata.width}x${metadata.height}`);
+    }
+    
     let processedImage;
     
     if (regionConfig.enabled && (regionConfig.width || regionConfig.height)) {
       // Extract region from image before processing
       const regionData = calculateRegionBounds(metadata.width, metadata.height, regionConfig);
+      
+      if (DEBUG_MODE) {
+        console.log(`[SSIM Debug] Calculated region bounds:`, regionData);
+      }
+      
       processedImage = await extractImageRegion(imageProcessor, regionData);
+      
+      // Verify region extraction worked correctly
+      const regionMetadata = await processedImage.getMetadata();
+      if (DEBUG_MODE) {
+        console.log(`[SSIM Debug] Extracted region dimensions: ${regionMetadata.width}x${regionMetadata.height}`);
+      }
     } else {
       // Use full image
       processedImage = imageProcessor;
+      
+      if (DEBUG_MODE) {
+        console.log(`[SSIM Debug] Using full image for fingerprint calculation`);
+      }
     }
     
     // Resize to standard fingerprint size and convert to grayscale
@@ -1255,6 +1275,22 @@ async function calculateSSIMFingerprint(imageBuffer, regionConfig = DEFAULT_REGI
       blocks: [],
       regionConfig: regionConfig.enabled ? regionConfig : null
     };
+    
+    // Validate pixel data before processing
+    if (!pixelData || pixelData.length === 0) {
+      throw new Error('Invalid pixel data: empty or null');
+    }
+    
+    const expectedPixelCount = SSIM_FINGERPRINT_SIZE * SSIM_FINGERPRINT_SIZE;
+    if (pixelData.length !== expectedPixelCount) {
+      console.warn(`[SSIM Warning] Pixel data length mismatch. Expected: ${expectedPixelCount}, Got: ${pixelData.length}`);
+    }
+    
+    if (DEBUG_MODE && regionConfig.enabled) {
+      // Sample some pixel values to verify data integrity
+      const samplePixels = Array.from(pixelData.slice(0, Math.min(20, pixelData.length)));
+      console.log(`[SSIM Debug] Sample pixel values:`, samplePixels);
+    }
     
     // Process each 8x8 block
     for (let blockY = 0; blockY < SSIM_BLOCKS_PER_DIMENSION; blockY++) {
@@ -1364,7 +1400,7 @@ async function extractImageRegion(imageProcessor, regionBounds) {
     // Create new pixel data for the region
     const regionPixelData = new Uint8Array(regionBounds.width * regionBounds.height * 3);
     
-    // Extract region pixels
+    // Extract region pixels with bounds checking
     for (let y = 0; y < regionBounds.height; y++) {
       for (let x = 0; x < regionBounds.width; x++) {
         const srcX = regionBounds.x + x;
@@ -1378,26 +1414,122 @@ async function extractImageRegion(imageProcessor, regionBounds) {
           regionPixelData[dstIdx] = pixelData[srcIdx];
           regionPixelData[dstIdx + 1] = pixelData[srcIdx + 1];
           regionPixelData[dstIdx + 2] = pixelData[srcIdx + 2];
+        } else {
+          // Fill out-of-bounds areas with black pixels
+          const dstIdx = (y * regionBounds.width + x) * 3;
+          regionPixelData[dstIdx] = 0;
+          regionPixelData[dstIdx + 1] = 0;
+          regionPixelData[dstIdx + 2] = 0;
         }
       }
     }
     
-    // Create a new buffer with the region data (simplified approach)
-    // In a real implementation, you'd need to create a proper image buffer
-    const regionBuffer = Buffer.from(regionPixelData);
-    const regionProcessor = createImageProcessor(regionBuffer);
-    
-    // Override metadata and decode functions
-    regionProcessor.getMetadata = async function() {
-      return {
-        width: regionBounds.width,
-        height: regionBounds.height,
-        format: metadata.format
-      };
-    };
-    
-    regionProcessor.decode = async function() {
-      return regionPixelData;
+    // Create a custom image processor that directly works with the extracted pixel data
+    // Instead of trying to create from a buffer (which expects image file data)
+    const regionProcessor = {
+      async getMetadata() {
+        return {
+          width: regionBounds.width,
+          height: regionBounds.height,
+          format: metadata.format
+        };
+      },
+      
+      async decode() {
+        return regionPixelData;
+      },
+      
+      async toGrayscale() {
+        const width = regionBounds.width;
+        const height = regionBounds.height;
+        
+        // Create grayscale pixel array (1 byte per pixel)
+        const grayscale = new Uint8Array(width * height);
+        
+        // Convert RGB to grayscale using luminance formula
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const idx = (y * width + x) * 3;
+            const r = regionPixelData[idx];
+            const g = regionPixelData[idx + 1];
+            const b = regionPixelData[idx + 2];
+            
+            // Standard luminance formula
+            grayscale[y * width + x] = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+          }
+        }
+        
+        return grayscale;
+      },
+      
+      resize(width, height = null, options = {}) {
+        // If height is null, maintain aspect ratio
+        if (height === null && regionBounds.height && regionBounds.width) {
+          height = Math.round(regionBounds.height * (width / regionBounds.width));
+        }
+        
+        // Create a new processor instance for the resized image
+        const resizedProcessor = {
+          async getMetadata() {
+            return { width, height, format: metadata.format };
+          },
+          
+          async decode() {
+            const sourceWidth = regionBounds.width;
+            const sourceHeight = regionBounds.height;
+            
+            if (!regionPixelData) return null;
+            
+            const targetPixels = new Uint8Array(width * height * 3);
+            
+            // Simple nearest-neighbor scaling
+            for (let y = 0; y < height; y++) {
+              for (let x = 0; x < width; x++) {
+                // Map target coordinates to source coordinates
+                const srcX = Math.floor(x * sourceWidth / width);
+                const srcY = Math.floor(y * sourceHeight / height);
+                
+                // Get source pixel
+                const srcIdx = (srcY * sourceWidth + srcX) * 3;
+                const tgtIdx = (y * width + x) * 3;
+                
+                // Copy RGB values
+                targetPixels[tgtIdx] = regionPixelData[srcIdx];
+                targetPixels[tgtIdx + 1] = regionPixelData[srcIdx + 1];
+                targetPixels[tgtIdx + 2] = regionPixelData[srcIdx + 2];
+              }
+            }
+            
+            return targetPixels;
+          },
+          
+          async toGrayscale() {
+            const targetPixels = await this.decode(); // Use the resized decode function
+            const grayscale = new Uint8Array(width * height);
+            
+            // Convert RGB to grayscale using luminance formula
+            for (let y = 0; y < height; y++) {
+              for (let x = 0; x < width; x++) {
+                const idx = (y * width + x) * 3;
+                const r = targetPixels[idx];
+                const g = targetPixels[idx + 1];
+                const b = targetPixels[idx + 2];
+                
+                // Standard luminance formula
+                grayscale[y * width + x] = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+              }
+            }
+            
+            return grayscale;
+          },
+          
+          resize: function(newWidth, newHeight = null, newOptions = {}) {
+            return regionProcessor.resize(newWidth, newHeight, newOptions);
+          }
+        };
+        
+        return resizedProcessor;
+      }
     };
     
     return regionProcessor;
@@ -1484,6 +1616,33 @@ function compareSSIMFingerprints(fingerprint1, fingerprint2) {
     
     const blockCount = fingerprint1.blocks.length;
     let totalSimilarity = 0;
+    
+    // Check for potentially corrupted fingerprints (all blocks identical)
+    if (DEBUG_MODE && blockCount > 1) {
+      const firstBlock1 = fingerprint1.blocks[0];
+      const firstBlock2 = fingerprint2.blocks[0];
+      
+      // Check if all blocks in fingerprint1 are identical (sign of corruption)
+      const allIdentical1 = fingerprint1.blocks.every(block => 
+        block.mean === firstBlock1.mean && 
+        block.variance === firstBlock1.variance &&
+        block.gradientDirection === firstBlock1.gradientDirection &&
+        block.gradientMagnitude === firstBlock1.gradientMagnitude
+      );
+      
+      // Check if all blocks in fingerprint2 are identical (sign of corruption)
+      const allIdentical2 = fingerprint2.blocks.every(block => 
+        block.mean === firstBlock2.mean && 
+        block.variance === firstBlock2.variance &&
+        block.gradientDirection === firstBlock2.gradientDirection &&
+        block.gradientMagnitude === firstBlock2.gradientMagnitude
+      );
+      
+      if (allIdentical1 || allIdentical2) {
+        console.warn(`[SSIM Warning] Potentially corrupted fingerprint detected - all blocks identical`);
+        console.warn(`[SSIM Warning] FP1 identical blocks: ${allIdentical1}, FP2 identical blocks: ${allIdentical2}`);
+      }
+    }
     
     // Compare each corresponding block
     for (let i = 0; i < blockCount; i++) {
