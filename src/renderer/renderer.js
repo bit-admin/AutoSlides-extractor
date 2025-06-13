@@ -1617,9 +1617,11 @@ btnTestSimilarity.addEventListener('click', async () => {
 
     const imagePath = await window.electronAPI.selectImageFile();
     if (imagePath) {
-      // Show region configuration dialog for test image
+      // Set current image path for testing
       currentImagePath = imagePath;
-      showTestSimilarityRegionModal(excludeFingerprints);
+      
+      // Run similarity test directly without asking for region configuration
+      await runSimilarityTest(excludeFingerprints);
     }
   } catch (error) {
     console.error('Failed to test image similarity:', error);
@@ -1684,6 +1686,180 @@ function showTestSimilarityRegionModal(excludeFingerprints) {
   
   // Show modal
   regionConfigModal.style.display = 'flex';
+}
+
+async function runSimilarityTest(excludeFingerprints) {
+  try {
+    // Validate image path
+    if (!currentImagePath) {
+      statusText.textContent = 'Error: No image selected. Please select an image first.';
+      return;
+    }
+    
+    statusText.textContent = 'Testing similarity against stored fingerprints...';
+    
+    let bestMatch = null;
+    let bestSimilarity = 0;
+    let matchCount = 0;
+    const testResults = [];
+    
+    // Test against all existing fingerprints using their stored region configurations
+    for (const excludeItem of excludeFingerprints) {
+      try {
+        // Use the new test-fingerprint-similarity API
+        const result = await window.electronAPI.testFingerprintSimilarity({
+          fingerprintId: excludeItem.id,
+          testImagePath: currentImagePath
+        });
+        
+        if (result.success) {
+          const similarityValue = result.similarity;
+          const threshold = result.threshold;
+          const isMatch = result.isMatch;
+          
+          // Count matches
+          if (isMatch) {
+            matchCount++;
+          }
+          
+          // Track best match
+          if (similarityValue > bestSimilarity) {
+            bestSimilarity = similarityValue;
+            bestMatch = {
+              name: excludeItem.name || excludeItem.id,
+              similarity: similarityValue,
+              threshold: threshold,
+              isMatch: isMatch,
+              storedRegionConfig: result.storedFingerprint.regionConfig
+            };
+          }
+          
+          // Store test result
+          testResults.push({
+            name: excludeItem.name || excludeItem.id,
+            similarity: similarityValue,
+            threshold: threshold,
+            isMatch: isMatch,
+            regionConfig: result.storedFingerprint.regionConfig
+          });
+        }
+      } catch (error) {
+        console.error(`Error testing against fingerprint ${excludeItem.id}:`, error);
+      }
+    }
+    
+    // Display results
+    const imageName = currentImagePath.split('/').pop();
+    if (bestMatch) {
+      const matchStatus = bestMatch.isMatch ? 'MATCH' : 'NO MATCH';
+      
+      // Create enhanced results dialog
+      const dialog = document.createElement('div');
+      dialog.className = 'similarity-test-dialog';
+      
+      // Format data as JSON-like structure with region info
+      const jsonData = {
+        testImage: imageName,
+        analysis: {
+          bestMatch: {
+            name: bestMatch.name,
+            similarity: parseFloat((bestMatch.similarity * 100).toFixed(1)),
+            threshold: parseFloat((bestMatch.threshold * 100).toFixed(1)),
+            status: matchStatus,
+            storedRegionConfig: bestMatch.storedRegionConfig || "full_image"
+          },
+          summary: {
+            totalMatches: matchCount,
+            totalFingerprints: excludeFingerprints.length,
+            matchPercentage: parseFloat(((matchCount / excludeFingerprints.length) * 100).toFixed(1))
+          }
+        }
+      };
+      
+      // Create formatted JSON display
+      const formatJsonValue = (key, value, isLast = false) => {
+        const comma = isLast ? '' : ',';
+        
+        if (typeof value === 'string') {
+          if (key === 'status') {
+            const statusClass = value === 'MATCH' ? 'match' : 'no-match';
+            return `    <span class="json-key">"${key}"</span><span class="json-colon">:</span> <span class="json-boolean ${statusClass}">${value}</span>${comma}`;
+          }
+          return `    <span class="json-key">"${key}"</span><span class="json-colon">:</span> <span class="json-string">"${value}"</span>${comma}`;
+        } else if (typeof value === 'number') {
+          return `    <span class="json-key">"${key}"</span><span class="json-colon">:</span> <span class="json-number">${value}</span>${comma}`;
+        } else if (typeof value === 'object' && value !== null) {
+          const objStr = JSON.stringify(value, null, 2).replace(/\n/g, '\n      ');
+          return `    <span class="json-key">"${key}"</span><span class="json-colon">:</span> <span class="json-object">${objStr}</span>${comma}`;
+        }
+        return `    <span class="json-key">"${key}"</span><span class="json-colon">:</span> ${value}${comma}`;
+      };
+      
+      const jsonDisplay = `<span class="json-brace">{</span>
+  <span class="json-key">"testImage"</span><span class="json-colon">:</span> <span class="json-string">"${jsonData.testImage}"</span>,
+  <span class="json-key">"analysis"</span><span class="json-colon">:</span> <span class="json-brace">{</span>
+    <span class="json-key">"bestMatch"</span><span class="json-colon">:</span> <span class="json-brace">{</span>
+${formatJsonValue('name', jsonData.analysis.bestMatch.name)}
+${formatJsonValue('similarity', jsonData.analysis.bestMatch.similarity)}
+${formatJsonValue('threshold', jsonData.analysis.bestMatch.threshold)}
+${formatJsonValue('status', jsonData.analysis.bestMatch.status)}
+${formatJsonValue('storedRegionConfig', jsonData.analysis.bestMatch.storedRegionConfig, true)}
+    <span class="json-brace">}</span>,
+    <span class="json-key">"summary"</span><span class="json-colon">:</span> <span class="json-brace">{</span>
+${formatJsonValue('totalMatches', jsonData.analysis.summary.totalMatches)}
+${formatJsonValue('totalFingerprints', jsonData.analysis.summary.totalFingerprints)}
+${formatJsonValue('matchPercentage', jsonData.analysis.summary.matchPercentage, true)}
+    <span class="json-brace">}</span>
+  <span class="json-brace">}</span>
+<span class="json-brace">}</span>`;
+      
+      dialog.innerHTML = `
+        <div class="similarity-test-header">
+          Similarity Test Results
+        </div>
+        <div class="similarity-test-body">
+          <div class="similarity-test-code-block">
+            <pre class="json-line">${jsonDisplay}</pre>
+          </div>
+        </div>
+        <div class="similarity-test-footer">
+          <button id="closeTestDialog" class="similarity-test-close-btn">Close</button>
+        </div>
+      `;
+      
+      // Add backdrop
+      const backdrop = document.createElement('div');
+      backdrop.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5); z-index: 999;
+      `;
+      
+      document.body.appendChild(backdrop);
+      document.body.appendChild(dialog);
+      
+      // Close dialog handlers
+      const closeDialog = () => {
+        document.body.removeChild(dialog);
+        document.body.removeChild(backdrop);
+      };
+      
+      document.getElementById('closeTestDialog').onclick = closeDialog;
+      backdrop.onclick = closeDialog;
+      
+      statusText.textContent = `Similarity test completed - ${matchStatus}`;
+    } else {
+      statusText.textContent = 'Failed to find any valid fingerprints for comparison';
+    }
+    
+    // Reset status after delay
+    setTimeout(() => {
+      statusText.textContent = 'Ready';
+    }, 5000);
+    
+  } catch (error) {
+    console.error('Failed to run similarity test:', error);
+    statusText.textContent = 'Error running similarity test';
+  }
 }
 
 async function runSimilarityTestWithRegion(excludeFingerprints, testRegionConfig) {

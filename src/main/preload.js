@@ -89,5 +89,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getRegionAlignmentTypes: () => ipcRenderer.invoke('get-region-alignment-types'),
   calculateRegionBounds: (options) => ipcRenderer.invoke('calculate-region-bounds', options),
   testRegionFingerprintSimilarity: (options) => ipcRenderer.invoke('test-region-fingerprint-similarity', options),
+  testFingerprintSimilarity: (options) => ipcRenderer.invoke('test-fingerprint-similarity', options),
   storeImageFingerprintWithRegion: (options) => ipcRenderer.invoke('store-image-fingerprint-with-region', options)
 });

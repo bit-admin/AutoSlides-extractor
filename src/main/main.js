@@ -8,7 +8,7 @@ const { Worker } = require('worker_threads');
 const { createImageProcessor } = require('./utils/image-processor');
 
 // Debug mode flag - set to false to disable verbose logging
-const DEBUG_MODE = true;
+const DEBUG_MODE = false;
 
 // Threshold parameter settings for image comparisons
 const HAMMING_THRESHOLD_UP = 5;       // Perception Hash Hamming Distance Upper Threshold
@@ -716,7 +716,9 @@ function initializePresetFingerprints() {
     
     // Check if preset directory exists
     if (!fs.existsSync(presetDir)) {
-      console.log('No preset fingerprints directory found, skipping initialization');
+      if (DEBUG_MODE) {
+        console.log('No preset fingerprints directory found, skipping initialization');
+      }
       return;
     }
     
@@ -734,7 +736,9 @@ function initializePresetFingerprints() {
     
     // Only initialize if version changed or first time
     if (installedVersion !== currentVersion) {
-      console.log(`Initializing preset fingerprints (version ${installedVersion} -> ${currentVersion})`);
+      if (DEBUG_MODE) {
+        console.log(`Initializing preset fingerprints (version ${installedVersion} -> ${currentVersion})`);
+      }
       
       // Get all .fp files from preset directory
       const presetFiles = fs.readdirSync(presetDir)
@@ -789,9 +793,13 @@ function initializePresetFingerprints() {
           }
           
           if (presetInfo) {
-            console.log(`Initialized preset ${preset.name}: ${presetName} (threshold: ${presetThreshold})`);
+            if (DEBUG_MODE) {
+              console.log(`Initialized preset ${preset.name}: ${presetName} (threshold: ${presetThreshold})`);
+            }
           } else {
-            console.log(`Initialized preset ${preset.name} with default threshold: ${presetThreshold}`);
+            if (DEBUG_MODE) {
+              console.log(`Initialized preset ${preset.name} with default threshold: ${presetThreshold}`);
+            }
           }
         }
         
@@ -799,7 +807,9 @@ function initializePresetFingerprints() {
         saveFingerprintIndexDirect(index);
         saveConfig(config);
         
-        console.log(`Initialized ${presetFiles.length} preset fingerprints`);
+        if (DEBUG_MODE) {
+          console.log(`Initialized ${presetFiles.length} preset fingerprints`);
+        }
       }
       
       // Update version file
@@ -1581,10 +1591,7 @@ ipcMain.handle('calculate-image-ssim-fingerprint', async (event, { imagePath, st
         reject(new Error(`Image file does not exist: ${imagePath}`));
         return;
       }
-      
-      // Log the image path being processed
-      console.log(`Processing image: ${imagePath}`);
-      
+
       // Read image file
       const imageBuffer = await fs.promises.readFile(imagePath);
       
@@ -2288,7 +2295,62 @@ ipcMain.handle('calculate-region-bounds', async (event, { imageWidth, imageHeigh
   });
 });
 
-// Test region-based fingerprint comparison
+// Test fingerprint similarity using stored fingerprint ID and test image
+ipcMain.handle('test-fingerprint-similarity', async (event, { fingerprintId, testImagePath }) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      // Load stored fingerprint by ID
+      const loadResult = await loadFingerprintById(fingerprintId);
+      if (!loadResult.success) {
+        reject(`Failed to load fingerprint with ID: ${fingerprintId}`);
+        return;
+      }
+      
+      const storedFingerprint = loadResult.fingerprint;
+      const metadata = loadResult.metadata;
+      
+      // Get region configuration from fingerprint metadata (stored in index)
+      const storedRegionConfig = metadata.fingerprint?.regionConfig || DEFAULT_REGION_CONFIG;
+      
+      if (DEBUG_MODE) {
+        console.log(`Using stored fingerprint ${fingerprintId} with region config:`, storedRegionConfig);
+      }
+      
+      // Read test image
+      const testImageBuffer = await fs.promises.readFile(testImagePath);
+      
+      // Calculate fingerprint for test image using the SAME region configuration as the stored fingerprint
+      // This ensures consistent comparison - both fingerprints use the same region
+      const testFingerprint = await calculateSSIMFingerprint(testImageBuffer, storedRegionConfig);
+      
+      // Compare fingerprints
+      const similarity = compareSSIMFingerprints(storedFingerprint, testFingerprint);
+      const threshold = metadata.threshold || SSIM_SIMILARITY_THRESHOLD;
+      
+      resolve({
+        success: true,
+        similarity,
+        isMatch: similarity >= threshold,
+        threshold,
+        storedFingerprint: {
+          id: fingerprintId,
+          name: metadata.name,
+          regionConfig: storedRegionConfig,
+          blockCount: storedFingerprint.blocks.length
+        },
+        testFingerprint: {
+          regionConfig: testFingerprint.regionConfig,
+          blockCount: testFingerprint.blocks.length,
+          stored: false // Important: test fingerprint is NOT stored
+        }
+      });
+    } catch (error) {
+      reject(`Error testing fingerprint similarity: ${error.message}`);
+    }
+  });
+});
+
+// Test region-based fingerprint comparison (kept for backward compatibility)
 ipcMain.handle('test-region-fingerprint-similarity', async (event, { imagePath1, imagePath2, regionConfig1, regionConfig2, threshold }) => {
   return new Promise(async (resolve, reject) => {
     try {
