@@ -57,6 +57,8 @@ const enableRegionComparison = document.getElementById('enableRegionComparison')
 const regionConfigOptions = document.getElementById('regionConfigOptions');
 const regionWidth = document.getElementById('regionWidth');
 const regionHeight = document.getElementById('regionHeight');
+const regionWidthSlider = document.getElementById('regionWidthSlider');
+const regionHeightSlider = document.getElementById('regionHeightSlider');
 const regionAlignment = document.getElementById('regionAlignment');
 const regionPreview = document.getElementById('regionPreview');
 const regionPreviewImage = regionPreview.querySelector('.region-preview-image');
@@ -369,7 +371,7 @@ async function saveAdvancedSettings() {
     if (modalPixelChangeRatioThreshold) pixelChangeRatioThreshold.value = modalPixelChangeRatioThreshold.value;
     if (modalVerificationCount) verificationCount.value = modalVerificationCount.value;
     if (modalSizeIdenticalThreshold) sizeIdenticalThreshold.value = modalSizeIdenticalThreshold.value;
-    if (modalSizeDiffThreshold) sizeDiffThreshold.value = modalSizeDiffThreshold.value;
+    if (modalSizeDiffThreshold) videoQuality.value = modalSizeDiffThreshold.value;
     if (modalVideoQuality) videoQuality.value = modalVideoQuality.value;
     if (modalEnablePostProcessing) enablePostProcessing.checked = modalEnablePostProcessing.checked;
     
@@ -408,7 +410,13 @@ function showRegionConfigModal() {
   enableRegionComparison.checked = currentRegionConfig.enabled;
   regionWidth.value = currentRegionConfig.width;
   regionHeight.value = currentRegionConfig.height;
+  regionWidthSlider.value = currentRegionConfig.width;
+  regionHeightSlider.value = currentRegionConfig.height;
   regionAlignment.value = currentRegionConfig.alignment;
+  
+  // Update slider visual progress
+  updateSliderProgress(regionWidthSlider, regionWidth);
+  updateSliderProgress(regionHeightSlider, regionHeight);
   
   // Show/hide options based on checkbox
   regionConfigOptions.style.display = currentRegionConfig.enabled ? 'block' : 'none';
@@ -595,7 +603,66 @@ enableRegionComparison.addEventListener('change', () => {
   }
 });
 
+// Function to update slider visual progress
+function updateSliderProgress(slider, input) {
+  const value = parseInt(input.value);
+  const min = parseInt(slider.min);
+  const max = parseInt(slider.max);
+  const progress = ((value - min) / (max - min)) * 100;
+  
+  slider.style.setProperty('--slider-progress', `${progress}%`);
+  
+  // Update thumb position for tooltip
+  const sliderGroup = slider.closest('.slider-input-group');
+  if (sliderGroup) {
+    sliderGroup.style.setProperty('--thumb-position', `${progress}%`);
+  }
+}
+
+// Enhanced region configuration event handlers with visual feedback
+enableRegionComparison.addEventListener('change', () => {
+  regionConfigOptions.style.display = enableRegionComparison.checked ? 'block' : 'none';
+  
+  // Update preview if image is loaded
+  const img = regionPreviewImage.querySelector('img');
+  if (img && img.naturalWidth > 0) {
+    updateRegionPreview(img.naturalWidth, img.naturalHeight);
+  }
+});
+
+// Sync width slider and input with visual updates
+regionWidthSlider.addEventListener('input', () => {
+  regionWidth.value = regionWidthSlider.value;
+  updateSliderProgress(regionWidthSlider, regionWidth);
+  
+  const img = regionPreviewImage.querySelector('img');
+  if (img && img.naturalWidth > 0) {
+    updateRegionPreview(img.naturalWidth, img.naturalHeight);
+  }
+});
+
 regionWidth.addEventListener('input', () => {
+  const value = parseInt(regionWidth.value) || 100;
+  const clampedValue = Math.max(100, Math.min(3840, value));
+  
+  if (value !== clampedValue) {
+    regionWidth.value = clampedValue;
+  }
+  
+  regionWidthSlider.value = clampedValue;
+  updateSliderProgress(regionWidthSlider, regionWidth);
+  
+  const img = regionPreviewImage.querySelector('img');
+  if (img && img.naturalWidth > 0) {
+    updateRegionPreview(img.naturalWidth, img.naturalHeight);
+  }
+});
+
+// Sync height slider and input with visual updates
+regionHeightSlider.addEventListener('input', () => {
+  regionHeight.value = regionHeightSlider.value;
+  updateSliderProgress(regionHeightSlider, regionHeight);
+  
   const img = regionPreviewImage.querySelector('img');
   if (img && img.naturalWidth > 0) {
     updateRegionPreview(img.naturalWidth, img.naturalHeight);
@@ -603,6 +670,16 @@ regionWidth.addEventListener('input', () => {
 });
 
 regionHeight.addEventListener('input', () => {
+  const value = parseInt(regionHeight.value) || 100;
+  const clampedValue = Math.max(100, Math.min(2160, value));
+  
+  if (value !== clampedValue) {
+    regionHeight.value = clampedValue;
+  }
+  
+  regionHeightSlider.value = clampedValue;
+  updateSliderProgress(regionHeightSlider, regionHeight);
+  
   const img = regionPreviewImage.querySelector('img');
   if (img && img.naturalWidth > 0) {
     updateRegionPreview(img.naturalWidth, img.naturalHeight);
@@ -1635,7 +1712,13 @@ function showTestSimilarityRegionModal(excludeFingerprints) {
   enableRegionComparison.checked = currentRegionConfig.enabled;
   regionWidth.value = currentRegionConfig.width;
   regionHeight.value = currentRegionConfig.height;
+  regionWidthSlider.value = currentRegionConfig.width;
+  regionHeightSlider.value = currentRegionConfig.height;
   regionAlignment.value = currentRegionConfig.alignment;
+  
+  // Update slider visual progress
+  updateSliderProgress(regionWidthSlider, regionWidth);
+  updateSliderProgress(regionHeightSlider, regionHeight);
   
   // Show/hide options based on checkbox
   regionConfigOptions.style.display = currentRegionConfig.enabled ? 'block' : 'none';
@@ -1726,7 +1809,7 @@ async function runSimilarityTest(excludeFingerprints) {
           if (similarityValue > bestSimilarity) {
             bestSimilarity = similarityValue;
             bestMatch = {
-              name: excludeItem.name || excludeItem.id,
+              name: excludeItem.name,
               similarity: similarityValue,
               threshold: threshold,
               isMatch: isMatch,
@@ -1736,7 +1819,7 @@ async function runSimilarityTest(excludeFingerprints) {
           
           // Store test result
           testResults.push({
-            name: excludeItem.name || excludeItem.id,
+            name: excludeItem.name,
             similarity: similarityValue,
             threshold: threshold,
             isMatch: isMatch,

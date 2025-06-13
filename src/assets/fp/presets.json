@@ -5,13 +5,38 @@
     "NO_SIGNAL": {
       "name": "[PRESET] NO SIGNAL",
       "threshold": 0.95,
-      "description": "Used to identify no signal screen pages in videos"
+      "description": "Used to identify no signal screen pages in videos",
+      "regionConfig": {
+        "enabled": false,
+        "width": null,
+        "height": null,
+        "alignment": "center"
+      }
     },
     "BLUE_SCREEN": {
       "name": "[PRESET] BLUE SCREEN",
       "threshold": 0.95,
-      "description": ""
+      "description": "Used to identify blue screen pages in videos",
+      "regionConfig": {
+        "enabled": false,
+        "width": null,
+        "height": null,
+        "alignment": "center"
+      }
     }
   },
-  "defaultThreshold": 0.95
+  "defaultThreshold": 0.95,
+  "defaultRegionConfig": {
+    "enabled": false,
+    "width": null,
+    "height": null,
+    "alignment": "center"
+  },
+  "notes": {
+    "regionConfig": "Region configuration for partial image comparison. When enabled=true, only the specified region will be used for fingerprint calculation.",
+    "alignment": "Supported alignment values: top-left, top-center, top-right, center-left, center, center-right, bottom-left, bottom-center, bottom-right",
+    "width": "Width in pixels, null means use full image width",
+    "height": "Height in pixels, null means use full image height",
+    "threshold": "SSIM similarity threshold (0.0-1.0), higher values require more similarity for matching"
+  }
 }

@@ -680,7 +680,25 @@ function loadPresetConfig() {
     
     if (fs.existsSync(configPath)) {
       const configData = fs.readFileSync(configPath, 'utf8');
-      return JSON.parse(configData);
+      const config = JSON.parse(configData);
+      
+      // Ensure default region config exists
+      if (!config.defaultRegionConfig) {
+        config.defaultRegionConfig = DEFAULT_REGION_CONFIG;
+      }
+      
+      // Ensure each preset has region config with defaults
+      Object.keys(config.presets || {}).forEach(presetName => {
+        const preset = config.presets[presetName];
+        if (!preset.regionConfig) {
+          preset.regionConfig = { ...DEFAULT_REGION_CONFIG };
+        } else {
+          // Merge with defaults to ensure all properties exist
+          preset.regionConfig = { ...DEFAULT_REGION_CONFIG, ...preset.regionConfig };
+        }
+      });
+      
+      return config;
     }
     
     // Return default config if file doesn't exist
@@ -688,14 +706,16 @@ function loadPresetConfig() {
       version: "1.0.0",
       description: "预置指纹配置文件",
       presets: {},
-      defaultThreshold: SSIM_SIMILARITY_THRESHOLD
+      defaultThreshold: SSIM_SIMILARITY_THRESHOLD,
+      defaultRegionConfig: DEFAULT_REGION_CONFIG
     };
   } catch (error) {
     console.error('Error loading preset config:', error);
     return {
       version: "1.0.0", 
       presets: {},
-      defaultThreshold: SSIM_SIMILARITY_THRESHOLD
+      defaultThreshold: SSIM_SIMILARITY_THRESHOLD,
+      defaultRegionConfig: DEFAULT_REGION_CONFIG
     };
   }
 }
@@ -769,6 +789,7 @@ function initializePresetFingerprints() {
           const presetInfo = presetConfig.presets[preset.name];
           const presetName = presetInfo?.name || `[预置] ${preset.name.replace(/_/g, ' ')}`;
           const presetThreshold = presetInfo?.threshold || presetConfig.defaultThreshold || SSIM_SIMILARITY_THRESHOLD;
+          const presetRegionConfig = presetInfo?.regionConfig || presetConfig.defaultRegionConfig || DEFAULT_REGION_CONFIG;
           
           // Add to index
           const fileStats = fs.statSync(targetPath);
@@ -783,7 +804,8 @@ function initializePresetFingerprints() {
             updatedAt: new Date().toISOString(),
             fingerprint: {
               version: 1,
-              preset: true
+              preset: true,
+              regionConfig: presetRegionConfig && presetRegionConfig.enabled ? presetRegionConfig : null
             }
           };
           
@@ -794,11 +816,17 @@ function initializePresetFingerprints() {
           
           if (presetInfo) {
             if (DEBUG_MODE) {
-              console.log(`Initialized preset ${preset.name}: ${presetName} (threshold: ${presetThreshold})`);
+              const regionInfo = presetRegionConfig && presetRegionConfig.enabled 
+                ? ` (region: ${presetRegionConfig.width || 'full'}x${presetRegionConfig.height || 'full'} @ ${presetRegionConfig.alignment})`
+                : ' (full image)';
+              console.log(`Initialized preset ${preset.name}: ${presetName} (threshold: ${presetThreshold})${regionInfo}`);
             }
           } else {
             if (DEBUG_MODE) {
-              console.log(`Initialized preset ${preset.name} with default threshold: ${presetThreshold}`);
+              const regionInfo = presetRegionConfig && presetRegionConfig.enabled 
+                ? ` (region: ${presetRegionConfig.width || 'full'}x${presetRegionConfig.height || 'full'} @ ${presetRegionConfig.alignment})`
+                : ' (full image)';
+              console.log(`Initialized preset ${preset.name} with default threshold: ${presetThreshold}${regionInfo}`);
             }
           }
         }
@@ -1141,6 +1169,11 @@ async function loadFingerprintById(id) {
     
     // Deserialize fingerprint
     const fingerprint = deserializeSSIMFingerprint(binaryData);
+    
+    // For preset fingerprints, restore region configuration from metadata
+    if (metadata.fingerprint && metadata.fingerprint.regionConfig) {
+      fingerprint.regionConfig = metadata.fingerprint.regionConfig;
+    }
     
     return {
       success: true,
@@ -1687,7 +1720,8 @@ ipcMain.handle('post-process-slides', async (event, { slidesDir, excludeHashes =
           
           if (useSSIM) {
             // Use SSIM fingerprint comparison
-            const slideFingerprint = await calculateSSIMFingerprint(imageBuffer);
+            // DON'T calculate slideFingerprint with default config here, 
+            // instead calculate it for each exclude fingerprint with their specific region config
             
             // Check against exclude fingerprints (new ID-based system)
             const configFingerprints = config.excludeFingerprints || [];
@@ -1707,12 +1741,22 @@ ipcMain.handle('post-process-slides', async (event, { slidesDir, excludeHashes =
                     const metadata = getFingerprintMetadata(id);
                     const customThreshold = metadata ? metadata.threshold : defaultThreshold;
                     
+                    // Get region configuration from the stored fingerprint
+                    const storedRegionConfig = metadata.fingerprint?.regionConfig || DEFAULT_REGION_CONFIG;
+                    
+                    // Calculate slide fingerprint using the SAME region configuration as the stored fingerprint
+                    // This ensures consistent comparison between preset and slide
+                    const slideFingerprint = await calculateSSIMFingerprint(imageBuffer, storedRegionConfig);
+                    
                     const similarity = compareSSIMFingerprints(slideFingerprint, loadedFingerprint.fingerprint);
                     if (similarity >= customThreshold) {
                       shouldRemove = true;
                       
                       if (DEBUG_MODE) {
-                        console.log(`Slide ${path.basename(slideFile)} matches exclude fingerprint ${id} (similarity: ${similarity.toFixed(4)}, threshold: ${customThreshold})`);
+                        const regionInfo = storedRegionConfig && storedRegionConfig.enabled 
+                          ? ` (region: ${storedRegionConfig.width || 'full'}x${storedRegionConfig.height || 'full'} @ ${storedRegionConfig.alignment})`
+                          : ' (full image)';
+                        console.log(`Slide ${path.basename(slideFile)} matches exclude fingerprint ${id} (similarity: ${similarity.toFixed(4)}, threshold: ${customThreshold})${regionInfo}`);
                       }
                       break;
                     }
@@ -3436,6 +3480,51 @@ ipcMain.handle('get-preset-config', async () => {
       });
     } catch (error) {
       reject(`Error getting preset config: ${error.message}`);
+    }
+  });
+});
+
+// Get detailed fingerprint information including region configuration
+ipcMain.handle('get-fingerprint-details', async (event, id) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const index = loadFingerprintIndex();
+      const metadata = index.fingerprints[id];
+      
+      if (!metadata) {
+        reject(`Fingerprint with ID '${id}' not found`);
+        return;
+      }
+      
+      // Load the actual fingerprint data
+      const fingerprintData = await loadFingerprintById(id);
+      
+      // Check if this is a preset fingerprint
+      const isPreset = id.startsWith('preset_') || (metadata.fingerprint && metadata.fingerprint.preset);
+      
+      // Get region configuration from metadata
+      const regionConfig = metadata.fingerprint?.regionConfig || null;
+      
+      resolve({
+        success: true,
+        id,
+        metadata,
+        fingerprint: fingerprintData.fingerprint,
+        isPreset,
+        regionConfig,
+        hasRegionConfig: !!(regionConfig && regionConfig.enabled),
+        details: {
+          name: metadata.name,
+          threshold: metadata.threshold,
+          createdAt: metadata.createdAt,
+          updatedAt: metadata.updatedAt,
+          fileSize: metadata.size,
+          blockCount: fingerprintData.fingerprint.blocks?.length || 0,
+          version: fingerprintData.fingerprint.version || 1
+        }
+      });
+    } catch (error) {
+      reject(`Error getting fingerprint details: ${error.message}`);
     }
   });
 });

@@ -84,6 +84,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openFingerprintStorageDir: () => ipcRenderer.invoke('open-fingerprint-storage-dir'),
   getPresetFingerprintsInfo: () => ipcRenderer.invoke('get-preset-fingerprints-info'),
   getPresetConfig: () => ipcRenderer.invoke('get-preset-config'),
+  getFingerprintDetails: (id) => ipcRenderer.invoke('get-fingerprint-details', id),
   
   // Region-based comparison methods
   getRegionAlignmentTypes: () => ipcRenderer.invoke('get-region-alignment-types'),
