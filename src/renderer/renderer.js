@@ -469,7 +469,22 @@ function updateRegionPreview(imageWidth, imageHeight) {
   if (!enableRegionComparison.checked) {
     regionPreviewOverlay.style.display = 'none';
     regionPreviewBounds.style.display = 'none';
-    regionPreviewInfo.innerHTML = '<p>Full image comparison enabled</p>';
+    regionPreviewInfo.innerHTML = `
+      <div class="preview-header">
+        <span class="region-title">Full Image Comparison</span>
+        <span class="coverage-badge">100%</span>
+      </div>
+      <div class="preview-grid">
+        <div class="info-item">
+          <span class="info-label">Image Size</span>
+          <span class="info-value">${imageWidth}×${imageHeight}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Mode</span>
+          <span class="info-value">Full Image</span>
+        </div>
+      </div>
+    `;
     return;
   }
   
@@ -519,13 +534,29 @@ function updateRegionPreview(imageWidth, imageHeight) {
   regionPreviewBounds.style.width = scaledBounds.width + 'px';
   regionPreviewBounds.style.height = scaledBounds.height + 'px';
   
-  // Update info
+  // Update info with improved layout
   regionPreviewInfo.innerHTML = `
-    <p>Region: ${bounds.width}×${bounds.height} at (${bounds.x}, ${bounds.y})</p>
-    <div class="preview-details">
-      <span>Image: ${imageWidth}×${imageHeight}</span>
-      <span>Alignment: ${alignment}</span>
-      <span>Coverage: ${((bounds.width * bounds.height) / (imageWidth * imageHeight) * 100).toFixed(1)}%</span>
+    <div class="preview-header">
+      <span class="region-title">Region: ${bounds.width}×${bounds.height}</span>
+      <span class="coverage-badge">${((bounds.width * bounds.height) / (imageWidth * imageHeight) * 100).toFixed(1)}%</span>
+    </div>
+    <div class="preview-grid">
+      <div class="info-item">
+        <span class="info-label">Position</span>
+        <span class="info-value">(${bounds.x}, ${bounds.y})</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Alignment</span>
+        <span class="info-value">${alignment}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Image Size</span>
+        <span class="info-value">${imageWidth}×${imageHeight}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Region Size</span>
+        <span class="info-value">${bounds.width}×${bounds.height}</span>
+      </div>
     </div>
   `;
 }

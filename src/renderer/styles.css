@@ -2148,13 +2148,61 @@ body.dark-mode .similarity-test-close-btn:hover {
 
 /* Region Configuration Modal Styles */
 .region-config-modal {
-  max-width: 600px;
-  max-height: 80vh;
+  max-width: 700px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.region-config-modal .modal-body {
+  flex: 1;
   overflow-y: auto;
+  padding: 20px;
+}
+
+.region-config-modal .modal-footer {
+  position: sticky;
+  bottom: 0;
+  background: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  margin-top: 0;
+  z-index: 10;
 }
 
 .region-config-section {
   margin-bottom: 20px;
+}
+
+/* Region Configuration Checkbox - Match Advanced Settings Style */
+.region-config-section .checkbox-group {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 12px 16px;
+  transition: all 0.2s ease;
+  margin-bottom: 16px;
+}
+
+.region-config-section .checkbox-group:hover {
+  background: #f1f3f4;
+  border-color: #d1d5db;
+}
+
+.region-config-section .checkbox-group input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0 12px 0 0;
+  accent-color: #2c7be5;
+  flex-shrink: 0;
+}
+
+.region-config-section .checkbox-group label {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+  display: inline-block;
+  vertical-align: top;
 }
 
 .region-config-options {
@@ -2212,33 +2260,81 @@ body.dark-mode .similarity-test-close-btn:hover {
 }
 
 .region-preview-info {
-  padding: 12px;
+  padding: 16px;
   background-color: #f8fafc;
   border-top: 1px solid #e2e8f0;
   font-size: 14px;
-  color: #64748b;
 }
 
-.region-preview-info p {
-  margin: 0;
+.region-preview-info .preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
 }
 
-.region-preview-info .preview-details {
-  margin-top: 8px;
+.region-preview-info .region-title {
+  font-weight: 600;
+  color: #334155;
+  font-size: 14px;
+}
+
+.region-preview-info .coverage-badge {
+  background: linear-gradient(135deg, #2c7be5 0%, #1a68d1 100%);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.region-preview-info .preview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.region-preview-info .info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.region-preview-info .info-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.region-preview-info .info-value {
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 12px;
-  color: #475569;
-}
-
-.region-preview-info .preview-details span {
-  display: inline-block;
-  margin-right: 16px;
+  font-size: 13px;
+  color: #374151;
+  font-weight: 600;
 }
 
 /* Dark mode support for region configuration */
 body.dark-mode .region-config-options {
   background-color: #1f2937;
   border-color: #374151;
+}
+
+body.dark-mode .region-config-section .checkbox-group {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+body.dark-mode .region-config-section .checkbox-group:hover {
+  background-color: #111827;
+  border-color: #4b5563;
+}
+
+body.dark-mode .region-config-section .checkbox-group label {
+  color: #d1d5db;
 }
 
 body.dark-mode .region-preview {
@@ -2253,11 +2349,22 @@ body.dark-mode .region-preview-image {
 body.dark-mode .region-preview-info {
   background-color: #1f2937;
   border-top-color: #374151;
+}
+
+body.dark-mode .region-preview-info .region-title {
+  color: #f3f4f6;
+}
+
+body.dark-mode .region-preview-info .info-label {
   color: #9ca3af;
 }
 
-body.dark-mode .region-preview-info .preview-details {
-  color: #d1d5db;
+body.dark-mode .region-preview-info .info-value {
+  color: #e5e7eb;
+}
+
+body.dark-mode .region-preview-info .preview-header {
+  border-bottom-color: #374151;
 }
 
 /* Region Configuration Slider Styles */
