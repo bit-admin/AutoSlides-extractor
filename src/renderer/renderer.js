@@ -48,6 +48,22 @@ const btnTestSimilarity = document.getElementById('btnTestSimilarity');
 const btnSelectSlidesDir = document.getElementById('btnSelectSlidesDir');
 const btnRunPostProcess = document.getElementById('btnRunPostProcess');
 
+// Region configuration elements
+const regionConfigModal = document.getElementById('regionConfigModal');
+const btnCloseRegionConfig = document.getElementById('btnCloseRegionConfig');
+const btnCancelRegionConfig = document.getElementById('btnCancelRegionConfig');
+const btnApplyRegionConfig = document.getElementById('btnApplyRegionConfig');
+const enableRegionComparison = document.getElementById('enableRegionComparison');
+const regionConfigOptions = document.getElementById('regionConfigOptions');
+const regionWidth = document.getElementById('regionWidth');
+const regionHeight = document.getElementById('regionHeight');
+const regionAlignment = document.getElementById('regionAlignment');
+const regionPreview = document.getElementById('regionPreview');
+const regionPreviewImage = regionPreview.querySelector('.region-preview-image');
+const regionPreviewOverlay = regionPreview.querySelector('.region-preview-overlay');
+const regionPreviewBounds = regionPreview.querySelector('.region-preview-bounds');
+const regionPreviewInfo = regionPreview.querySelector('.region-preview-info');
+
 // Global variable
 let selectedVideoPath = '';
 let videoQueue = []; // Video queue
@@ -62,6 +78,13 @@ let timerInterval = null;
 
 // Post-processing variables
 let selectedSlidesDir = '';
+let currentImagePath = '';
+let currentRegionConfig = {
+  enabled: false,
+  width: 800,
+  height: 600,
+  alignment: 'center'
+};
 
 // Progress Control Related Variables
 let currentPhase = ''; // 'extracting' or 'analyzing'
@@ -214,26 +237,12 @@ btnSelectImageFingerprint.addEventListener('click', async () => {
   try {
     const imagePath = await window.electronAPI.selectImageFile();
     if (imagePath) {
-      statusText.textContent = 'Calculating SSIM fingerprint...';
-      const result = await window.electronAPI.calculateImageSSIMFingerprint({
-        imagePath,
-        store: true,
-        name: `Fingerprint_${Date.now()}`,
-        threshold: 0.95
-      });
-      if (result && result.success && result.id) {
-        await addExcludeFingerprint(result.id, result.metadata.threshold);
-        statusText.textContent = `Fingerprint calculated and added: ${result.metadata.name}`;
-        setTimeout(() => {
-          statusText.textContent = 'Ready';
-        }, 3000);
-      } else {
-        statusText.textContent = 'Failed to calculate fingerprint';
-      }
+      currentImagePath = imagePath;
+      showRegionConfigModal();
     }
   } catch (error) {
-    console.error('Failed to calculate image fingerprint:', error);
-    statusText.textContent = 'Error calculating image fingerprint';
+    console.error('Failed to select image file:', error);
+    statusText.textContent = 'Error selecting image file';
   }
 });
 
@@ -386,6 +395,280 @@ async function saveAdvancedSettings() {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && advancedSettingsModal.style.display === 'flex') {
     hideAdvancedSettings();
+  }
+  if (e.key === 'Escape' && regionConfigModal.style.display === 'flex') {
+    hideRegionConfigModal();
+  }
+});
+
+// ===== Region Configuration Modal Functions =====
+
+function showRegionConfigModal() {
+  // Reset form to current configuration
+  enableRegionComparison.checked = currentRegionConfig.enabled;
+  regionWidth.value = currentRegionConfig.width;
+  regionHeight.value = currentRegionConfig.height;
+  regionAlignment.value = currentRegionConfig.alignment;
+  
+  // Show/hide options based on checkbox
+  regionConfigOptions.style.display = currentRegionConfig.enabled ? 'block' : 'none';
+  
+  // Load image preview
+  loadImagePreview();
+  
+  // Show modal
+  regionConfigModal.style.display = 'flex';
+}
+
+function hideRegionConfigModal(clearImagePath = true) {
+  regionConfigModal.style.display = 'none';
+  if (clearImagePath) {
+    currentImagePath = '';
+  }
+}
+
+async function loadImagePreview() {
+  if (!currentImagePath) return;
+  
+  try {
+    // Create image element
+    const img = document.createElement('img');
+    img.onload = function() {
+      // Clear previous content
+      regionPreviewImage.innerHTML = '';
+      regionPreviewImage.appendChild(img);
+      regionPreviewImage.appendChild(regionPreviewOverlay);
+      regionPreviewImage.appendChild(regionPreviewBounds);
+      
+      // Update preview
+      updateRegionPreview(img.naturalWidth, img.naturalHeight);
+    };
+    
+    // Load image data
+    const imageData = await window.electronAPI.readFrameImage(currentImagePath);
+    img.src = imageData;
+    img.style.maxWidth = '100%';
+    img.style.maxHeight = '100%';
+    img.style.objectFit = 'contain';
+    
+  } catch (error) {
+    console.error('Failed to load image preview:', error);
+    regionPreviewInfo.innerHTML = '<p>Failed to load image preview</p>';
+  }
+}
+
+function updateRegionPreview(imageWidth, imageHeight) {
+  if (!enableRegionComparison.checked) {
+    regionPreviewOverlay.style.display = 'none';
+    regionPreviewBounds.style.display = 'none';
+    regionPreviewInfo.innerHTML = '<p>Full image comparison enabled</p>';
+    return;
+  }
+  
+  const regionW = parseInt(regionWidth.value) || 800;
+  const regionH = parseInt(regionHeight.value) || 600;
+  const alignment = regionAlignment.value;
+  
+  // Calculate region bounds
+  const bounds = calculateRegionBounds(imageWidth, imageHeight, {
+    enabled: true,
+    width: regionW,
+    height: regionH,
+    alignment: alignment
+  });
+  
+  // Get preview container dimensions
+  const containerRect = regionPreviewImage.getBoundingClientRect();
+  const containerWidth = containerRect.width;
+  const containerHeight = containerRect.height;
+  
+  // Calculate scale to fit image in container
+  const scaleX = containerWidth / imageWidth;
+  const scaleY = containerHeight / imageHeight;
+  const scale = Math.min(scaleX, scaleY);
+  
+  // Calculate scaled dimensions
+  const scaledImageWidth = imageWidth * scale;
+  const scaledImageHeight = imageHeight * scale;
+  
+  // Calculate offset to center image in container
+  const offsetX = (containerWidth - scaledImageWidth) / 2;
+  const offsetY = (containerHeight - scaledImageHeight) / 2;
+  
+  // Calculate scaled region bounds
+  const scaledBounds = {
+    x: bounds.x * scale + offsetX,
+    y: bounds.y * scale + offsetY,
+    width: bounds.width * scale,
+    height: bounds.height * scale
+  };
+  
+  // Update overlay and bounds
+  regionPreviewOverlay.style.display = 'block';
+  regionPreviewBounds.style.display = 'block';
+  regionPreviewBounds.style.left = scaledBounds.x + 'px';
+  regionPreviewBounds.style.top = scaledBounds.y + 'px';
+  regionPreviewBounds.style.width = scaledBounds.width + 'px';
+  regionPreviewBounds.style.height = scaledBounds.height + 'px';
+  
+  // Update info
+  regionPreviewInfo.innerHTML = `
+    <p>Region: ${bounds.width}×${bounds.height} at (${bounds.x}, ${bounds.y})</p>
+    <div class="preview-details">
+      <span>Image: ${imageWidth}×${imageHeight}</span>
+      <span>Alignment: ${alignment}</span>
+      <span>Coverage: ${((bounds.width * bounds.height) / (imageWidth * imageHeight) * 100).toFixed(1)}%</span>
+    </div>
+  `;
+}
+
+function calculateRegionBounds(imageWidth, imageHeight, regionConfig) {
+  const targetWidth = regionConfig.width || imageWidth;
+  const targetHeight = regionConfig.height || imageHeight;
+  
+  // Ensure target dimensions don't exceed image dimensions
+  const finalWidth = Math.min(targetWidth, imageWidth);
+  const finalHeight = Math.min(targetHeight, imageHeight);
+  
+  let x = 0, y = 0;
+  
+  // Calculate position based on alignment
+  switch (regionConfig.alignment) {
+    case 'top-left':
+      x = 0;
+      y = 0;
+      break;
+    case 'top-center':
+      x = Math.floor((imageWidth - finalWidth) / 2);
+      y = 0;
+      break;
+    case 'top-right':
+      x = imageWidth - finalWidth;
+      y = 0;
+      break;
+    case 'center-left':
+      x = 0;
+      y = Math.floor((imageHeight - finalHeight) / 2);
+      break;
+    case 'center':
+      x = Math.floor((imageWidth - finalWidth) / 2);
+      y = Math.floor((imageHeight - finalHeight) / 2);
+      break;
+    case 'center-right':
+      x = imageWidth - finalWidth;
+      y = Math.floor((imageHeight - finalHeight) / 2);
+      break;
+    case 'bottom-left':
+      x = 0;
+      y = imageHeight - finalHeight;
+      break;
+    case 'bottom-center':
+      x = Math.floor((imageWidth - finalWidth) / 2);
+      y = imageHeight - finalHeight;
+      break;
+    case 'bottom-right':
+      x = imageWidth - finalWidth;
+      y = imageHeight - finalHeight;
+      break;
+    default:
+      // Default to center
+      x = Math.floor((imageWidth - finalWidth) / 2);
+      y = Math.floor((imageHeight - finalHeight) / 2);
+  }
+  
+  return {
+    x: Math.max(0, x),
+    y: Math.max(0, y),
+    width: finalWidth,
+    height: finalHeight
+  };
+}
+
+// Region configuration event handlers
+enableRegionComparison.addEventListener('change', () => {
+  regionConfigOptions.style.display = enableRegionComparison.checked ? 'block' : 'none';
+  
+  // Update preview if image is loaded
+  const img = regionPreviewImage.querySelector('img');
+  if (img && img.naturalWidth > 0) {
+    updateRegionPreview(img.naturalWidth, img.naturalHeight);
+  }
+});
+
+regionWidth.addEventListener('input', () => {
+  const img = regionPreviewImage.querySelector('img');
+  if (img && img.naturalWidth > 0) {
+    updateRegionPreview(img.naturalWidth, img.naturalHeight);
+  }
+});
+
+regionHeight.addEventListener('input', () => {
+  const img = regionPreviewImage.querySelector('img');
+  if (img && img.naturalWidth > 0) {
+    updateRegionPreview(img.naturalWidth, img.naturalHeight);
+  }
+});
+
+regionAlignment.addEventListener('change', () => {
+  const img = regionPreviewImage.querySelector('img');
+  if (img && img.naturalWidth > 0) {
+    updateRegionPreview(img.naturalWidth, img.naturalHeight);
+  }
+});
+
+btnCloseRegionConfig.addEventListener('click', () => hideRegionConfigModal(true));
+btnCancelRegionConfig.addEventListener('click', () => hideRegionConfigModal(true));
+
+btnApplyRegionConfig.addEventListener('click', async () => {
+  try {
+    // Update current region configuration
+    currentRegionConfig = {
+      enabled: enableRegionComparison.checked,
+      width: enableRegionComparison.checked ? parseInt(regionWidth.value) || 800 : null,
+      height: enableRegionComparison.checked ? parseInt(regionHeight.value) || 600 : null,
+      alignment: regionAlignment.value
+    };
+    
+    // Validate image path
+    if (!currentImagePath) {
+      statusText.textContent = 'Error: No image selected. Please select an image first.';
+      hideRegionConfigModal();
+      return;
+    }
+    
+    // Hide modal without clearing the image path
+    hideRegionConfigModal(false);      // Calculate fingerprint with region configuration
+    statusText.textContent = 'Calculating SSIM fingerprint with region configuration...';
+    
+    // Log the image path for debugging
+    console.log('[Add from Image] Using image path for fingerprint calculation:', currentImagePath);
+    
+    const result = await window.electronAPI.calculateImageSSIMFingerprint({
+      imagePath: currentImagePath,
+      store: true,
+      name: `Fingerprint_${Date.now()}`,
+      threshold: 0.95,
+      regionConfig: currentRegionConfig
+    });
+    
+    if (result && result.success && result.id) {
+      await addExcludeFingerprint(result.id, result.metadata.threshold);
+      
+      const regionInfo = result.regionConfig ? 
+        ` (Region: ${result.regionConfig.width}×${result.regionConfig.height}, ${result.regionConfig.alignment})` : 
+        ' (Full image)';
+      
+      statusText.textContent = `Fingerprint calculated and added: ${result.metadata.name}${regionInfo}`;
+      setTimeout(() => {
+        statusText.textContent = 'Ready';
+      }, 3000);
+    } else {
+      statusText.textContent = 'Failed to calculate fingerprint';
+    }
+    
+  } catch (error) {
+    console.error('Failed to apply region configuration:', error);
+    statusText.textContent = 'Error applying region configuration';
   }
 });
 
@@ -1334,118 +1617,203 @@ btnTestSimilarity.addEventListener('click', async () => {
 
     const imagePath = await window.electronAPI.selectImageFile();
     if (imagePath) {
-      statusText.textContent = 'Calculating fingerprint and testing similarity...';
+      // Show region configuration dialog for test image
+      currentImagePath = imagePath;
+      showTestSimilarityRegionModal(excludeFingerprints);
+    }
+  } catch (error) {
+    console.error('Failed to test image similarity:', error);
+    statusText.textContent = 'Error testing image similarity';
+  }
+});
+
+// Show region configuration modal for test similarity
+function showTestSimilarityRegionModal(excludeFingerprints) {
+  // Reset form to current configuration
+  enableRegionComparison.checked = currentRegionConfig.enabled;
+  regionWidth.value = currentRegionConfig.width;
+  regionHeight.value = currentRegionConfig.height;
+  regionAlignment.value = currentRegionConfig.alignment;
+  
+  // Show/hide options based on checkbox
+  regionConfigOptions.style.display = currentRegionConfig.enabled ? 'block' : 'none';
+  
+  // Load image preview
+  loadImagePreview();
+  
+  // Update modal title and button text for testing
+  const modalHeader = regionConfigModal.querySelector('.modal-header h3');
+  const applyButton = btnApplyRegionConfig;
+  
+  modalHeader.textContent = 'Test Similarity - Region Configuration';
+  applyButton.textContent = 'Run Test';
+  
+  // Replace the apply button handler temporarily
+  const originalHandler = applyButton.onclick;
+  applyButton.onclick = async () => {
+    try {
+      // Update current region configuration
+      const testRegionConfig = {
+        enabled: enableRegionComparison.checked,
+        width: enableRegionComparison.checked ? parseInt(regionWidth.value) || 800 : null,
+        height: enableRegionComparison.checked ? parseInt(regionHeight.value) || 600 : null,
+        alignment: regionAlignment.value
+      };
       
-      // Calculate fingerprint for the test image
-      const result = await window.electronAPI.calculateImageSSIMFingerprint({
-        imagePath,
-        store: false, // Don't store, just calculate for testing
-        threshold: 0.95
-      });
+      // Hide modal without clearing the image path
+      hideRegionConfigModal(false);
       
-      if (result && result.success) {
-        let bestMatch = null;
-        let bestSimilarity = 0;
-        let matchCount = 0;
-        
-        // Test against all existing fingerprints
-        for (const excludeItem of excludeFingerprints) {
-          try {
-            // Load the stored fingerprint
-            const storedResult = await window.electronAPI.loadFingerprintById(excludeItem.id);
+      // Restore original modal state
+      modalHeader.textContent = 'Region Configuration';
+      applyButton.textContent = 'Apply Configuration';
+      applyButton.onclick = originalHandler;
+      
+      // Run similarity test with region configuration
+      await runSimilarityTestWithRegion(excludeFingerprints, testRegionConfig);
+      
+    } catch (error) {
+      console.error('Failed to run similarity test:', error);
+      statusText.textContent = 'Error running similarity test';
+      
+      // Restore original modal state
+      modalHeader.textContent = 'Region Configuration';
+      applyButton.textContent = 'Apply Configuration';
+      applyButton.onclick = originalHandler;
+    }
+  };
+  
+  // Show modal
+  regionConfigModal.style.display = 'flex';
+}
+
+async function runSimilarityTestWithRegion(excludeFingerprints, testRegionConfig) {
+  try {
+    // Validate image path
+    if (!currentImagePath) {
+      statusText.textContent = 'Error: No image selected. Please select an image first.';
+      return;
+    }
+    
+    statusText.textContent = 'Calculating fingerprint and testing similarity...';
+    
+    // Calculate fingerprint for the test image with region configuration
+    // Log the image path for debugging
+    console.log('[Test Similarity] Using image path for fingerprint calculation:', currentImagePath);
+    
+    const result = await window.electronAPI.calculateImageSSIMFingerprint({
+      imagePath: currentImagePath,
+      store: false, // Don't store, just calculate for testing
+      threshold: 0.95,
+      regionConfig: testRegionConfig
+    });
+    
+    if (result && result.success) {
+      let bestMatch = null;
+      let bestSimilarity = 0;
+      let matchCount = 0;
+      
+      // Test against all existing fingerprints
+      for (const excludeItem of excludeFingerprints) {
+        try {
+          // Load the stored fingerprint
+          const storedResult = await window.electronAPI.loadFingerprintById(excludeItem.id);
+          
+          if (storedResult.success) {
+            // Compare fingerprints
+            const similarity = await window.electronAPI.compareSSIMFingerprints({
+              fingerprint1: result.fingerprint,
+              fingerprint2: storedResult.fingerprint
+            });
             
-            if (storedResult.success) {
-              // Compare fingerprints
-              const similarity = await window.electronAPI.compareSSIMFingerprints({
-                fingerprint1: result.fingerprint,
-                fingerprint2: storedResult.fingerprint
-              });
+            if (similarity.success) {
+              const similarityValue = similarity.similarity;
+              const threshold = excludeItem.threshold || 0.95;
               
-              if (similarity.success) {
-                const similarityValue = similarity.similarity;
-                const threshold = excludeItem.threshold || 0.95;
-                
-                // Check if this is a match based on threshold
-                if (similarityValue >= threshold) {
-                  matchCount++;
-                }
-                
-                // Track best match
-                if (similarityValue > bestSimilarity) {
-                  bestSimilarity = similarityValue;
-                  bestMatch = {
-                    name: excludeItem.name || excludeItem.id,
-                    similarity: similarityValue,
-                    threshold: threshold,
-                    isMatch: similarityValue >= threshold
-                  };
-                }
+              // Check if this is a match based on threshold
+              if (similarityValue >= threshold) {
+                matchCount++;
+              }
+              
+              // Track best match
+              if (similarityValue > bestSimilarity) {
+                bestSimilarity = similarityValue;
+                bestMatch = {
+                  name: excludeItem.name || excludeItem.id,
+                  similarity: similarityValue,
+                  threshold: threshold,
+                  isMatch: similarityValue >= threshold,
+                  storedRegionConfig: storedResult.metadata?.fingerprint?.regionConfig
+                };
               }
             }
-          } catch (error) {
-            console.error(`Error testing against fingerprint ${excludeItem.id}:`, error);
           }
+        } catch (error) {
+          console.error(`Error testing against fingerprint ${excludeItem.id}:`, error);
         }
+      }
+      
+      // Display results
+      const imageName = currentImagePath.split('/').pop();
+      if (bestMatch) {
+        const matchStatus = bestMatch.isMatch ? 'MATCH' : 'NO MATCH';
         
-        // Display results
-        const imageName = imagePath.split('/').pop();
-        if (bestMatch) {
-          const matchStatus = bestMatch.isMatch ? 'MATCH' : 'NO MATCH';
-          const matchStyle = bestMatch.isMatch ? 'color: #dc2626; font-weight: bold;' : 'color: #059669;';
-          
-          const resultMessage = `Test Results for "${imageName}":
-Best match: ${bestMatch.name}
-Similarity: ${(bestMatch.similarity * 100).toFixed(1)}%
-Threshold: ${(bestMatch.threshold * 100).toFixed(1)}%
-Status: ${matchStatus}
-Total matches: ${matchCount}/${excludeFingerprints.length}`;
-          
-          // Show results in a professional technical dialog
-          const dialog = document.createElement('div');
-          dialog.className = 'similarity-test-dialog';
-          
-          // Format data as JSON-like structure
-          const jsonData = {
-            testImage: imageName,
-            analysis: {
-              bestMatch: {
-                name: bestMatch.name,
-                similarity: parseFloat((bestMatch.similarity * 100).toFixed(1)),
-                threshold: parseFloat((bestMatch.threshold * 100).toFixed(1)),
-                status: matchStatus
-              },
-              summary: {
-                totalMatches: matchCount,
-                totalFingerprints: excludeFingerprints.length,
-                matchPercentage: parseFloat(((matchCount / excludeFingerprints.length) * 100).toFixed(1))
-              }
+        // Create enhanced results dialog with region information
+        const dialog = document.createElement('div');
+        dialog.className = 'similarity-test-dialog';
+        
+        // Format data as JSON-like structure with region info
+        const jsonData = {
+          testImage: imageName,
+          testRegionConfig: testRegionConfig.enabled ? {
+            width: testRegionConfig.width,
+            height: testRegionConfig.height,
+            alignment: testRegionConfig.alignment
+          } : "full_image",
+          analysis: {
+            bestMatch: {
+              name: bestMatch.name,
+              similarity: parseFloat((bestMatch.similarity * 100).toFixed(1)),
+              threshold: parseFloat((bestMatch.threshold * 100).toFixed(1)),
+              status: matchStatus,
+              storedRegionConfig: bestMatch.storedRegionConfig || "full_image"
+            },
+            summary: {
+              totalMatches: matchCount,
+              totalFingerprints: excludeFingerprints.length,
+              matchPercentage: parseFloat(((matchCount / excludeFingerprints.length) * 100).toFixed(1))
             }
-          };
+          }
+        };
+        
+        // Create formatted JSON display
+        const formatJsonValue = (key, value, isLast = false) => {
+          const comma = isLast ? '' : ',';
           
-          // Create formatted JSON display
-          const formatJsonValue = (key, value, isLast = false) => {
-            const comma = isLast ? '' : ',';
-            
-            if (typeof value === 'string') {
-              if (key === 'status') {
-                const statusClass = value === 'MATCH' ? 'match' : 'no-match';
-                return `    <span class="json-key">"${key}"</span><span class="json-colon">:</span> <span class="json-boolean ${statusClass}">${value}</span>${comma}`;
-              }
-              return `    <span class="json-key">"${key}"</span><span class="json-colon">:</span> <span class="json-string">"${value}"</span>${comma}`;
-            } else if (typeof value === 'number') {
-              return `    <span class="json-key">"${key}"</span><span class="json-colon">:</span> <span class="json-number">${value}</span>${comma}`;
+          if (typeof value === 'string') {
+            if (key === 'status') {
+              const statusClass = value === 'MATCH' ? 'match' : 'no-match';
+              return `    <span class="json-key">"${key}"</span><span class="json-colon">:</span> <span class="json-boolean ${statusClass}">${value}</span>${comma}`;
             }
-            return `    <span class="json-key">"${key}"</span><span class="json-colon">:</span> ${value}${comma}`;
-          };
-          
-          const jsonDisplay = `<span class="json-brace">{</span>
+            return `    <span class="json-key">"${key}"</span><span class="json-colon">:</span> <span class="json-string">"${value}"</span>${comma}`;
+          } else if (typeof value === 'number') {
+            return `    <span class="json-key">"${key}"</span><span class="json-colon">:</span> <span class="json-number">${value}</span>${comma}`;
+          } else if (typeof value === 'object' && value !== null) {
+            const objStr = JSON.stringify(value, null, 2).replace(/\n/g, '\n      ');
+            return `    <span class="json-key">"${key}"</span><span class="json-colon">:</span> <span class="json-object">${objStr}</span>${comma}`;
+          }
+          return `    <span class="json-key">"${key}"</span><span class="json-colon">:</span> ${value}${comma}`;
+        };
+        
+        const jsonDisplay = `<span class="json-brace">{</span>
   <span class="json-key">"testImage"</span><span class="json-colon">:</span> <span class="json-string">"${jsonData.testImage}"</span>,
+  ${formatJsonValue('testRegionConfig', jsonData.testRegionConfig)}
   <span class="json-key">"analysis"</span><span class="json-colon">:</span> <span class="json-brace">{</span>
     <span class="json-key">"bestMatch"</span><span class="json-colon">:</span> <span class="json-brace">{</span>
 ${formatJsonValue('name', jsonData.analysis.bestMatch.name)}
 ${formatJsonValue('similarity', jsonData.analysis.bestMatch.similarity)}
 ${formatJsonValue('threshold', jsonData.analysis.bestMatch.threshold)}
-${formatJsonValue('status', jsonData.analysis.bestMatch.status, true)}
+${formatJsonValue('status', jsonData.analysis.bestMatch.status)}
+${formatJsonValue('storedRegionConfig', jsonData.analysis.bestMatch.storedRegionConfig, true)}
     <span class="json-brace">}</span>,
     <span class="json-key">"summary"</span><span class="json-colon">:</span> <span class="json-brace">{</span>
 ${formatJsonValue('totalMatches', jsonData.analysis.summary.totalMatches)}
@@ -1454,59 +1822,58 @@ ${formatJsonValue('matchPercentage', jsonData.analysis.summary.matchPercentage, 
     <span class="json-brace">}</span>
   <span class="json-brace">}</span>
 <span class="json-brace">}</span>`;
-          
-          dialog.innerHTML = `
-            <div class="similarity-test-header">
-              Similarity Test Results
-            </div>
-            <div class="similarity-test-body">
-              <div class="similarity-test-code-block">
-                <pre class="json-line">${jsonDisplay}</pre>
-              </div>
-            </div>
-            <div class="similarity-test-footer">
-              <button id="closeTestDialog" class="similarity-test-close-btn">Close</button>
-            </div>
-          `;
-          
-          // Add backdrop
-          const backdrop = document.createElement('div');
-          backdrop.style.cssText = `
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); z-index: 999;
-          `;
-          
-          document.body.appendChild(backdrop);
-          document.body.appendChild(dialog);
-          
-          // Close dialog handlers
-          const closeDialog = () => {
-            document.body.removeChild(dialog);
-            document.body.removeChild(backdrop);
-          };
-          
-          document.getElementById('closeTestDialog').onclick = closeDialog;
-          backdrop.onclick = closeDialog;
-          
-          statusText.textContent = `Similarity test completed - ${matchStatus}`;
-        } else {
-          statusText.textContent = 'Failed to find any valid fingerprints for comparison';
-        }
         
-        // Reset status after delay
-        setTimeout(() => {
-          statusText.textContent = 'Ready';
-        }, 5000);
+        dialog.innerHTML = `
+          <div class="similarity-test-header">
+            Similarity Test Results (Region-based)
+          </div>
+          <div class="similarity-test-body">
+            <div class="similarity-test-code-block">
+              <pre class="json-line">${jsonDisplay}</pre>
+            </div>
+          </div>
+          <div class="similarity-test-footer">
+            <button id="closeTestDialog" class="similarity-test-close-btn">Close</button>
+          </div>
+        `;
         
+        // Add backdrop
+        const backdrop = document.createElement('div');
+        backdrop.style.cssText = `
+          position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+          background: rgba(0,0,0,0.5); z-index: 999;
+        `;
+        
+        document.body.appendChild(backdrop);
+        document.body.appendChild(dialog);
+        
+        // Close dialog handlers
+        const closeDialog = () => {
+          document.body.removeChild(dialog);
+          document.body.removeChild(backdrop);
+        };
+        
+        document.getElementById('closeTestDialog').onclick = closeDialog;
+        backdrop.onclick = closeDialog;
+        
+        statusText.textContent = `Similarity test completed - ${matchStatus}`;
       } else {
-        statusText.textContent = 'Failed to calculate test image fingerprint';
+        statusText.textContent = 'Failed to find any valid fingerprints for comparison';
       }
+      
+      // Reset status after delay
+      setTimeout(() => {
+        statusText.textContent = 'Ready';
+      }, 5000);
+      
+    } else {
+      statusText.textContent = 'Failed to calculate test image fingerprint';
     }
   } catch (error) {
-    console.error('Failed to test image similarity:', error);
-    statusText.textContent = 'Error testing image similarity';
+    console.error('Failed to run similarity test:', error);
+    statusText.textContent = 'Error running similarity test';
   }
-});
+}
 
 // Test preset fingerprints initialization - for debugging
 async function testPresetFingerprints() {

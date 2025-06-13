@@ -268,6 +268,69 @@
     </div>
   </div>
   
+  <!-- Region Configuration Modal -->
+  <div id="regionConfigModal" class="modal" style="display: none;">
+    <div class="modal-content region-config-modal">
+      <div class="modal-header">
+        <h3>Region Configuration</h3>
+        <button id="btnCloseRegionConfig" class="close-button">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="region-config-section">
+          <div class="form-group checkbox-group">
+            <input type="checkbox" id="enableRegionComparison">
+            <label for="enableRegionComparison">Enable Region-based Comparison</label>
+          </div>
+          
+          <div id="regionConfigOptions" class="region-config-options" style="display: none;">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="regionWidth">Region Width (pixels)</label>
+                <input type="number" id="regionWidth" min="100" max="3840" step="1" value="800" placeholder="800">
+              </div>
+              <div class="form-group">
+                <label for="regionHeight">Region Height (pixels)</label>
+                <input type="number" id="regionHeight" min="100" max="2160" step="1" value="600" placeholder="600">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="regionAlignment">Alignment</label>
+              <select id="regionAlignment">
+                <option value="top-left">Top Left</option>
+                <option value="top-center">Top Center</option>
+                <option value="top-right">Top Right</option>
+                <option value="center-left">Center Left</option>
+                <option value="center" selected>Center</option>
+                <option value="center-right">Center Right</option>
+                <option value="bottom-left">Bottom Left</option>
+                <option value="bottom-center">Bottom Center</option>
+                <option value="bottom-right">Bottom Right</option>
+              </select>
+            </div>
+            
+            <div class="region-preview-section">
+              <h4>Preview</h4>
+              <div id="regionPreview" class="region-preview">
+                <div class="region-preview-image">
+                  <div class="region-preview-overlay"></div>
+                  <div class="region-preview-bounds"></div>
+                </div>
+                <div class="region-preview-info">
+                  <p>Select an image to see region preview</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnCancelRegionConfig" class="secondary-button">Cancel</button>
+        <button id="btnApplyRegionConfig" class="primary-button">Apply Configuration</button>
+      </div>
+    </div>
+  </div>
+  
   <script src="renderer.js"></script>
 </body>
 </html>

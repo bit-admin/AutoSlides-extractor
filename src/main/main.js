@@ -8,7 +8,7 @@ const { Worker } = require('worker_threads');
 const { createImageProcessor } = require('./utils/image-processor');
 
 // Debug mode flag - set to false to disable verbose logging
-const DEBUG_MODE = false;
+const DEBUG_MODE = true;
 
 // Threshold parameter settings for image comparisons
 const HAMMING_THRESHOLD_UP = 5;       // Perception Hash Hamming Distance Upper Threshold
@@ -590,6 +590,27 @@ const SSIM_BLOCK_SIZE = 8;                // 8x8 blocks for local feature extrac
 const SSIM_BLOCKS_PER_DIMENSION = SSIM_FINGERPRINT_SIZE / SSIM_BLOCK_SIZE; // 8x8 = 64 blocks total
 const SSIM_SIMILARITY_THRESHOLD = 0.95;   // Default similarity threshold for SSIM fingerprint comparison
 
+// Region-based Comparison Configuration
+const REGION_ALIGNMENT_TYPES = {
+  TOP_LEFT: 'top-left',
+  TOP_CENTER: 'top-center', 
+  TOP_RIGHT: 'top-right',
+  CENTER_LEFT: 'center-left',
+  CENTER: 'center',
+  CENTER_RIGHT: 'center-right',
+  BOTTOM_LEFT: 'bottom-left',
+  BOTTOM_CENTER: 'bottom-center',
+  BOTTOM_RIGHT: 'bottom-right'
+};
+
+// Default region configuration for full image comparison
+const DEFAULT_REGION_CONFIG = {
+  enabled: false,
+  width: null,    // null means use full image width
+  height: null,   // null means use full image height
+  alignment: REGION_ALIGNMENT_TYPES.CENTER
+};
+
 // Fingerprint Storage Management
 const fingerprintStorageDir = path.join(app.getPath('userData'), 'fingerprints');
 const fingerprintIndexFile = path.join(fingerprintStorageDir, 'index.json');
@@ -1030,9 +1051,10 @@ function updateFingerprintMetadata(id, updates) {
  * @param {string} name - Human readable name
  * @param {number} threshold - Default threshold for this fingerprint
  * @param {string} sourcePath - Original image path (optional)
+ * @param {Object} regionConfig - Region configuration (optional)
  * @returns {Object} Storage result with ID
  */
-async function storeFingerprintWithMetadata(fingerprint, name, threshold = SSIM_SIMILARITY_THRESHOLD, sourcePath = null) {
+async function storeFingerprintWithMetadata(fingerprint, name, threshold = SSIM_SIMILARITY_THRESHOLD, sourcePath = null, regionConfig = null) {
   try {
     ensureFingerprintStorageExists();
     
@@ -1060,7 +1082,8 @@ async function storeFingerprintWithMetadata(fingerprint, name, threshold = SSIM_
         version: fingerprint.version,
         size: fingerprint.size,
         blockSize: fingerprint.blockSize,
-        blockCount: fingerprint.blocks.length
+        blockCount: fingerprint.blocks.length,
+        regionConfig: regionConfig && regionConfig.enabled ? regionConfig : null
       }
     };
     
@@ -1154,16 +1177,28 @@ async function deleteFingerprintById(id) {
 /**
  * Calculate SSIM-based fingerprint for an image
  * @param {Buffer} imageBuffer - Image data buffer
+ * @param {Object} regionConfig - Region configuration for partial comparison
  * @returns {Object} SSIM fingerprint object
  */
-async function calculateSSIMFingerprint(imageBuffer) {
+async function calculateSSIMFingerprint(imageBuffer, regionConfig = DEFAULT_REGION_CONFIG) {
   try {
     // Create image processor
     const imageProcessor = createImageProcessor(imageBuffer);
     const metadata = await imageProcessor.getMetadata();
     
+    let processedImage;
+    
+    if (regionConfig.enabled && (regionConfig.width || regionConfig.height)) {
+      // Extract region from image before processing
+      const regionData = calculateRegionBounds(metadata.width, metadata.height, regionConfig);
+      processedImage = await extractImageRegion(imageProcessor, regionData);
+    } else {
+      // Use full image
+      processedImage = imageProcessor;
+    }
+    
     // Resize to standard fingerprint size and convert to grayscale
-    const resized = await imageProcessor.resize(SSIM_FINGERPRINT_SIZE, SSIM_FINGERPRINT_SIZE).toGrayscale();
+    const resized = await processedImage.resize(SSIM_FINGERPRINT_SIZE, SSIM_FINGERPRINT_SIZE).toGrayscale();
     const pixelData = resized;
     
     // Initialize fingerprint structure
@@ -1171,7 +1206,8 @@ async function calculateSSIMFingerprint(imageBuffer) {
       version: 1,
       size: SSIM_FINGERPRINT_SIZE,
       blockSize: SSIM_BLOCK_SIZE,
-      blocks: []
+      blocks: [],
+      regionConfig: regionConfig.enabled ? regionConfig : null
     };
     
     // Process each 8x8 block
@@ -1191,6 +1227,136 @@ async function calculateSSIMFingerprint(imageBuffer) {
     return fingerprint;
   } catch (error) {
     console.error('Error calculating SSIM fingerprint:', error);
+    throw error;
+  }
+}
+
+/**
+ * Calculate region bounds based on alignment and target dimensions
+ * @param {number} imageWidth - Original image width
+ * @param {number} imageHeight - Original image height
+ * @param {Object} regionConfig - Region configuration
+ * @returns {Object} Region bounds {x, y, width, height}
+ */
+function calculateRegionBounds(imageWidth, imageHeight, regionConfig) {
+  const targetWidth = regionConfig.width || imageWidth;
+  const targetHeight = regionConfig.height || imageHeight;
+  
+  // Ensure target dimensions don't exceed image dimensions
+  const finalWidth = Math.min(targetWidth, imageWidth);
+  const finalHeight = Math.min(targetHeight, imageHeight);
+  
+  let x = 0, y = 0;
+  
+  // Calculate position based on alignment
+  switch (regionConfig.alignment) {
+    case REGION_ALIGNMENT_TYPES.TOP_LEFT:
+      x = 0;
+      y = 0;
+      break;
+    case REGION_ALIGNMENT_TYPES.TOP_CENTER:
+      x = Math.floor((imageWidth - finalWidth) / 2);
+      y = 0;
+      break;
+    case REGION_ALIGNMENT_TYPES.TOP_RIGHT:
+      x = imageWidth - finalWidth;
+      y = 0;
+      break;
+    case REGION_ALIGNMENT_TYPES.CENTER_LEFT:
+      x = 0;
+      y = Math.floor((imageHeight - finalHeight) / 2);
+      break;
+    case REGION_ALIGNMENT_TYPES.CENTER:
+      x = Math.floor((imageWidth - finalWidth) / 2);
+      y = Math.floor((imageHeight - finalHeight) / 2);
+      break;
+    case REGION_ALIGNMENT_TYPES.CENTER_RIGHT:
+      x = imageWidth - finalWidth;
+      y = Math.floor((imageHeight - finalHeight) / 2);
+      break;
+    case REGION_ALIGNMENT_TYPES.BOTTOM_LEFT:
+      x = 0;
+      y = imageHeight - finalHeight;
+      break;
+    case REGION_ALIGNMENT_TYPES.BOTTOM_CENTER:
+      x = Math.floor((imageWidth - finalWidth) / 2);
+      y = imageHeight - finalHeight;
+      break;
+    case REGION_ALIGNMENT_TYPES.BOTTOM_RIGHT:
+      x = imageWidth - finalWidth;
+      y = imageHeight - finalHeight;
+      break;
+    default:
+      // Default to center
+      x = Math.floor((imageWidth - finalWidth) / 2);
+      y = Math.floor((imageHeight - finalHeight) / 2);
+  }
+  
+  return {
+    x: Math.max(0, x),
+    y: Math.max(0, y),
+    width: finalWidth,
+    height: finalHeight
+  };
+}
+
+/**
+ * Extract a region from an image
+ * @param {Object} imageProcessor - Image processor instance
+ * @param {Object} regionBounds - Region bounds {x, y, width, height}
+ * @returns {Object} New image processor with extracted region
+ */
+async function extractImageRegion(imageProcessor, regionBounds) {
+  try {
+    const metadata = await imageProcessor.getMetadata();
+    const pixelData = await imageProcessor.decode();
+    
+    if (!pixelData) {
+      throw new Error('Failed to decode image data');
+    }
+    
+    // Create new pixel data for the region
+    const regionPixelData = new Uint8Array(regionBounds.width * regionBounds.height * 3);
+    
+    // Extract region pixels
+    for (let y = 0; y < regionBounds.height; y++) {
+      for (let x = 0; x < regionBounds.width; x++) {
+        const srcX = regionBounds.x + x;
+        const srcY = regionBounds.y + y;
+        
+        // Ensure we don't go out of bounds
+        if (srcX < metadata.width && srcY < metadata.height) {
+          const srcIdx = (srcY * metadata.width + srcX) * 3;
+          const dstIdx = (y * regionBounds.width + x) * 3;
+          
+          regionPixelData[dstIdx] = pixelData[srcIdx];
+          regionPixelData[dstIdx + 1] = pixelData[srcIdx + 1];
+          regionPixelData[dstIdx + 2] = pixelData[srcIdx + 2];
+        }
+      }
+    }
+    
+    // Create a new buffer with the region data (simplified approach)
+    // In a real implementation, you'd need to create a proper image buffer
+    const regionBuffer = Buffer.from(regionPixelData);
+    const regionProcessor = createImageProcessor(regionBuffer);
+    
+    // Override metadata and decode functions
+    regionProcessor.getMetadata = async function() {
+      return {
+        width: regionBounds.width,
+        height: regionBounds.height,
+        format: metadata.format
+      };
+    };
+    
+    regionProcessor.decode = async function() {
+      return regionPixelData;
+    };
+    
+    return regionProcessor;
+  } catch (error) {
+    console.error('Error extracting image region:', error);
     throw error;
   }
 }
@@ -1401,19 +1567,34 @@ function deserializeSSIMFingerprint(buffer) {
 }
 
 // Calculate SSIM fingerprint for a single image and optionally store it
-ipcMain.handle('calculate-image-ssim-fingerprint', async (event, { imagePath, store = false, name = '', threshold = SSIM_SIMILARITY_THRESHOLD }) => {
+ipcMain.handle('calculate-image-ssim-fingerprint', async (event, { imagePath, store = false, name = '', threshold = SSIM_SIMILARITY_THRESHOLD, regionConfig = DEFAULT_REGION_CONFIG }) => {
   return new Promise(async (resolve, reject) => {
     try {
+      // Validate image path
+      if (!imagePath) {
+        reject(new Error('Image path is empty or undefined'));
+        return;
+      }
+
+      // Check if file exists
+      if (!fs.existsSync(imagePath)) {
+        reject(new Error(`Image file does not exist: ${imagePath}`));
+        return;
+      }
+      
+      // Log the image path being processed
+      console.log(`Processing image: ${imagePath}`);
+      
       // Read image file
       const imageBuffer = await fs.promises.readFile(imagePath);
       
-      // Calculate SSIM fingerprint
-      const fingerprint = await calculateSSIMFingerprint(imageBuffer);
+      // Calculate SSIM fingerprint with region support
+      const fingerprint = await calculateSSIMFingerprint(imageBuffer, regionConfig);
       
       if (store) {
         // Store fingerprint with metadata
         const fileName = name || path.basename(imagePath, path.extname(imagePath));
-        const storeResult = await storeFingerprintWithMetadata(fingerprint, fileName, threshold, imagePath);
+        const storeResult = await storeFingerprintWithMetadata(fingerprint, fileName, threshold, imagePath, regionConfig);
         
         resolve({ 
           fingerprint,
@@ -1422,6 +1603,7 @@ ipcMain.handle('calculate-image-ssim-fingerprint', async (event, { imagePath, st
           stored: true,
           id: storeResult.id,
           metadata: storeResult.metadata,
+          regionConfig: fingerprint.regionConfig,
           success: true 
         });
       } else {
@@ -1433,6 +1615,7 @@ ipcMain.handle('calculate-image-ssim-fingerprint', async (event, { imagePath, st
           binaryData: binaryData.toString('base64'),
           size: binaryData.length,
           stored: false,
+          regionConfig: fingerprint.regionConfig,
           success: true 
         });
       }
@@ -1646,17 +1829,28 @@ ipcMain.handle('post-process-slides', async (event, { slidesDir, excludeHashes =
 
 // Select image file for hash calculation
 ipcMain.handle('select-image-file', async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openFile'],
-    filters: [
-      { name: 'Image Files', extensions: ['jpg', 'jpeg', 'png', 'bmp', 'gif'] }
-    ]
-  });
-  
-  if (!result.canceled && result.filePaths.length > 0) {
-    return result.filePaths[0];
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openFile'],
+      filters: [
+        { name: 'Image Files', extensions: ['jpg', 'jpeg', 'png', 'bmp', 'gif'] }
+      ]
+    });
+    
+    if (!result.canceled && result.filePaths.length > 0) {
+      // Check if file exists
+      const imagePath = result.filePaths[0];
+      if (fs.existsSync(imagePath)) {
+        return imagePath;
+      } else {
+        throw new Error(`Selected file does not exist: ${imagePath}`);
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error('Error selecting image file:', error);
+    throw error;
   }
-  return null;
 });
 
 // Select slides directory for manual post-processing
@@ -2061,6 +2255,96 @@ ipcMain.handle('import-fingerprint', async (event, { importPath, name, threshold
       resolve(result);
     } catch (error) {
       reject(`Error importing fingerprint: ${error.message}`);
+    }
+  });
+});
+
+// ===== Region-based Comparison IPC Handlers =====
+
+// Get available region alignment types
+ipcMain.handle('get-region-alignment-types', async () => {
+  return new Promise((resolve) => {
+    resolve({
+      success: true,
+      alignmentTypes: REGION_ALIGNMENT_TYPES,
+      defaultConfig: DEFAULT_REGION_CONFIG
+    });
+  });
+});
+
+// Calculate region bounds for preview
+ipcMain.handle('calculate-region-bounds', async (event, { imageWidth, imageHeight, regionConfig }) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const bounds = calculateRegionBounds(imageWidth, imageHeight, regionConfig);
+      resolve({
+        success: true,
+        bounds,
+        regionConfig
+      });
+    } catch (error) {
+      reject(`Error calculating region bounds: ${error.message}`);
+    }
+  });
+});
+
+// Test region-based fingerprint comparison
+ipcMain.handle('test-region-fingerprint-similarity', async (event, { imagePath1, imagePath2, regionConfig1, regionConfig2, threshold }) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      // Read both images
+      const imageBuffer1 = await fs.promises.readFile(imagePath1);
+      const imageBuffer2 = await fs.promises.readFile(imagePath2);
+      
+      // Calculate fingerprints with region configurations
+      const fingerprint1 = await calculateSSIMFingerprint(imageBuffer1, regionConfig1 || DEFAULT_REGION_CONFIG);
+      const fingerprint2 = await calculateSSIMFingerprint(imageBuffer2, regionConfig2 || DEFAULT_REGION_CONFIG);
+      
+      // Compare fingerprints
+      const similarity = compareSSIMFingerprints(fingerprint1, fingerprint2);
+      const customThreshold = threshold !== undefined ? threshold : SSIM_SIMILARITY_THRESHOLD;
+      
+      resolve({
+        success: true,
+        similarity,
+        isMatch: similarity >= customThreshold,
+        threshold: customThreshold,
+        fingerprint1: {
+          regionConfig: fingerprint1.regionConfig,
+          blockCount: fingerprint1.blocks.length
+        },
+        fingerprint2: {
+          regionConfig: fingerprint2.regionConfig,
+          blockCount: fingerprint2.blocks.length
+        }
+      });
+    } catch (error) {
+      reject(`Error testing region fingerprint similarity: ${error.message}`);
+    }
+  });
+});
+
+// Store image fingerprint with region configuration
+ipcMain.handle('store-image-fingerprint-with-region', async (event, { imagePath, name, threshold, regionConfig }) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      // Read image file
+      const imageBuffer = await fs.promises.readFile(imagePath);
+      
+      // Calculate SSIM fingerprint with region configuration
+      const fingerprint = await calculateSSIMFingerprint(imageBuffer, regionConfig || DEFAULT_REGION_CONFIG);
+      
+      // Store with metadata
+      const fileName = name || path.basename(imagePath, path.extname(imagePath));
+      const customThreshold = threshold !== undefined ? threshold : SSIM_SIMILARITY_THRESHOLD;
+      const result = await storeFingerprintWithMetadata(fingerprint, fileName, customThreshold, imagePath, regionConfig);
+      
+      resolve({
+        ...result,
+        regionConfig: fingerprint.regionConfig
+      });
+    } catch (error) {
+      reject(`Error storing image fingerprint with region: ${error.message}`);
     }
   });
 });

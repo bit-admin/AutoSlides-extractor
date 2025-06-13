@@ -2145,3 +2145,130 @@ body.dark-mode .similarity-test-close-btn:hover {
   background-color: #6b7280;
   border-color: #9ca3af;
 }
+
+/* Region Configuration Modal Styles */
+.region-config-modal {
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.region-config-section {
+  margin-bottom: 20px;
+}
+
+.region-config-options {
+  margin-top: 16px;
+  padding: 16px;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.region-preview-section {
+  margin-top: 20px;
+}
+
+.region-preview {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #fff;
+}
+
+.region-preview-image {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  background-color: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.region-preview-image img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.region-preview-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  z-index: 1;
+}
+
+.region-preview-bounds {
+  position: absolute;
+  border: 2px solid #2c7be5;
+  background-color: rgba(44, 123, 229, 0.1);
+  z-index: 2;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+.region-preview-info {
+  padding: 12px;
+  background-color: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.region-preview-info p {
+  margin: 0;
+}
+
+.region-preview-info .preview-details {
+  margin-top: 8px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 12px;
+  color: #475569;
+}
+
+.region-preview-info .preview-details span {
+  display: inline-block;
+  margin-right: 16px;
+}
+
+/* Dark mode support for region configuration */
+body.dark-mode .region-config-options {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+body.dark-mode .region-preview {
+  border-color: #374151;
+  background-color: #1f2937;
+}
+
+body.dark-mode .region-preview-image {
+  background-color: #111827;
+}
+
+body.dark-mode .region-preview-info {
+  background-color: #1f2937;
+  border-top-color: #374151;
+  color: #9ca3af;
+}
+
+body.dark-mode .region-preview-info .preview-details {
+  color: #d1d5db;
+}
+
+/* Responsive adjustments for region configuration */
+@media (max-width: 768px) {
+  .region-config-modal {
+    max-width: 95vw;
+    margin: 10px;
+  }
+  
+  .region-preview-image {
+    height: 150px;
+  }
+}
+

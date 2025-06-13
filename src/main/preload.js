@@ -83,5 +83,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   importFingerprint: (options) => ipcRenderer.invoke('import-fingerprint', options),
   openFingerprintStorageDir: () => ipcRenderer.invoke('open-fingerprint-storage-dir'),
   getPresetFingerprintsInfo: () => ipcRenderer.invoke('get-preset-fingerprints-info'),
-  getPresetConfig: () => ipcRenderer.invoke('get-preset-config')
+  getPresetConfig: () => ipcRenderer.invoke('get-preset-config'),
+  
+  // Region-based comparison methods
+  getRegionAlignmentTypes: () => ipcRenderer.invoke('get-region-alignment-types'),
+  calculateRegionBounds: (options) => ipcRenderer.invoke('calculate-region-bounds', options),
+  testRegionFingerprintSimilarity: (options) => ipcRenderer.invoke('test-region-fingerprint-similarity', options),
+  storeImageFingerprintWithRegion: (options) => ipcRenderer.invoke('store-image-fingerprint-with-region', options)
 });
