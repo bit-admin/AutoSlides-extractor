@@ -2,9 +2,9 @@
   "version": "1.0.0",
   "description": "Preset Fingerprint Configuration File",
   "presets": {
-    "NO_SIGNAL": {
-      "name": "[PRESET] NO SIGNAL",
-      "threshold": 0.95,
+    "NO_SIGNAL_H": {
+      "name": "[PRESET] NO SIGNAL HQ",
+      "threshold": 0.85,
       "description": "Used to identify no signal screen pages in videos",
       "regionConfig": {
         "enabled": false,
@@ -13,59 +13,37 @@
         "alignment": "center"
       }
     },
-    "SHUT_DOWN": {
-      "name": "[PRESET] SHUT DOWN",
-      "threshold": 0.9,
-      "description": "Used to identify shut down screen pages in videos",
+    "NO_SIGNAL_L": {
+      "name": "[PRESET] NO SIGNAL LQ",
+      "threshold": 0.85,
+      "description": "Used to identify no signal screen pages in videos",
       "regionConfig": {
-        "enabled": true,
-        "width": 1436,
-        "height": 546,
-        "alignment": "top-left"
-      }
-    },
-    "WALLPAPER_A": {
-      "name": "[PRESET] WALLPAPER A",
-      "threshold": 0.95,
-      "description": "Used to identify wallpaper A screen pages in videos",
-      "regionConfig": {
-        "enabled": true,
-        "width": 1150,
-        "height": 730,
+        "enabled": false,
+        "width": null,
+        "height": null,
         "alignment": "center"
       }
     },
-    "WALLPAPER_B": {
-      "name": "[PRESET] WALLPAPER B",
-      "threshold": 0.95,
-      "description": "Used to identify wallpaper B screen pages in videos",
+    "SHUTDOWN_10": {
+      "name": "[PRESET] SHUTDOWN 10",
+      "threshold": 0.8,
+      "description": "Used to identify shutdown 10 screen pages in videos",
       "regionConfig": {
         "enabled": true,
-        "width": 930,
-        "height": 680,
-        "alignment": "center"
+        "width": 1100,
+        "height": 1000,
+        "alignment": "top-center"
       }
     },
-    "NO_SIGNAL_PATTERN": {
-      "name": "[PRESET] NO SIGNAL PATTERN",
-      "threshold": 0.88,
-      "description": "Used to identify no signal pattern screen pages in videos",
+    "SHUTDOWN_9": {
+      "name": "[PRESET] SHUTDOWN 9",
+      "threshold": 0.8,
+      "description": "Used to identify shutdown 9 screen pages in videos",
       "regionConfig": {
         "enabled": true,
-        "width": 380,
-        "height": 100,
-        "alignment": "center"
-      }
-    },
-    "SHUT_DOWN_PATTERN": {
-      "name": "[PRESET] SHUT DOWN PATTERN",
-      "threshold": 0.99,
-      "description": "Used to identify shut down pattern screen pages in videos",
-      "regionConfig": {
-        "enabled": true,
-        "width": 110,
-        "height": 520,
-        "alignment": "bottom-center"
+        "width": 1100,
+        "height": 1000,
+        "alignment": "top-center"
       }
     }
   },
