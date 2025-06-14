@@ -1,5 +1,7 @@
 # AutoSlides Extractor
 
+[**English Version**](README_EN.md) 👈 Click here for English
+
 **AutoSlides Extractor** 是一款基于 Electron 和 Node.js 构建的跨平台桌面应用程序，旨在自动高效地从视频录像中提取演示幻灯片。它可以分析课堂录像、会议视频、网络研讨会和其他视频内容，捕获并保存幻灯片图像，大大提高笔记记录、内容归档和信息检索的效率。使用 AutoSlides Extractor，用户无需手动截图即可从冗长的视频中快速获取关键幻灯片图像。
 
 该项目是从 [AutoSlides 项目](https://github.com/bit-admin/Yanhekt-AutoSlides) 中衍生出的一个独立工具。
