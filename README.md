@@ -176,3 +176,7 @@ AutoSlides Extractor 的核心逻辑是确定视频中何时发生幻灯片切�
 AutoSlides Extractor 遵循 **MIT 许可证** 发布。这意味着您可以自由使用、修改和分发该软件。有关完整许可证文本，请参见仓库中的 `LICENSE` 文件。
 
 包含的所有第三方库和工具（如 Electron、FFmpeg 等）均遵循其各自的许可证。使用本软件即表示您同意遵守所有相关许可证。AutoSlides Extractor 的 MIT 许可证明确涵盖此仓库中的源代码。
+
+## 联系我们
+
+如需报告问题或提出建议，请发送邮件至：[info@bitech.edu.kg](mailto:info@bitech.edu.kg)
