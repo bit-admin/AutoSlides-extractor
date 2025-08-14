@@ -1,6 +1,6 @@
 {
   "name": "autoslides-extractor",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Automatic slide extract application",
   "main": "src/main/main.js",
   "scripts": {
@@ -23,7 +23,8 @@
   "dependencies": {
     "ffmpeg-static": "^5.2.0",
     "ffprobe-static": "^3.1.0",
-    "fluent-ffmpeg": "^2.1.3"
+    "fluent-ffmpeg": "^2.1.3",
+    "jimp": "^1.6.0"
   },
   "build": {
     "appId": "com.extractor.autoslides.app",
@@ -52,7 +53,9 @@
         {
           "from": "src/assets",
           "to": "assets",
-          "filter": ["**/*"]
+          "filter": [
+            "**/*"
+          ]
         }
       ]
     },
@@ -73,12 +76,16 @@
         {
           "from": "build/binaries/win-${arch}",
           "to": "bin",
-          "filter": ["**/*"]
+          "filter": [
+            "**/*"
+          ]
         },
         {
           "from": "src/assets",
           "to": "assets",
-          "filter": ["**/*"]
+          "filter": [
+            "**/*"
+          ]
         }
       ]
     },

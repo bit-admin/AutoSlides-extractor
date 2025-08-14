@@ -412,7 +412,7 @@ async function calculatePerceptualHash(img, preprocessedData) {
   try {
     // Use preprocessed 32x32 grayscale data if available
     const data = preprocessedData || await img
-      .resize(32, 32, { fit: 'fill' })
+      .resize(32, 32)
       .toGrayscale();
     
     // Convert raw pixel data to 2D array for DCT

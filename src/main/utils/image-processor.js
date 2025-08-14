@@ -1,16 +1,9 @@
 /**
- * Native image processor utility for AutoSlides Extractor
- * A replacement for Sharp dependency using native Node.js
+ * High-quality image processor utility for AutoSlides Extractor
+ * Using Jimp for professional image processing capabilities
  */
 
-const fs = require('fs');
-const path = require('path');
-
-// Simple JPEG decoder markers
-const JPEG_SOI = Buffer.from([0xFF, 0xD8]); // Start of Image
-const JPEG_EOI = Buffer.from([0xFF, 0xD9]); // End of Image
-const JPEG_SOF0 = 0xC0;  // Start of Frame marker
-const JPEG_SOF2 = 0xC2;  // Progressive JPEG marker
+const { Jimp } = require('jimp');
 
 /**
  * Create an image processor instance for a given buffer
@@ -21,258 +14,108 @@ function createImageProcessor(buffer) {
   // Store the original buffer
   const originalBuffer = Buffer.from(buffer);
   
-  // Private data storage for processing
-  const _data = {
-    buffer: originalBuffer,
-    width: 0,
-    height: 0,
-    format: '',
-    pixels: null
-  };
+  // Cache for the Jimp image instance
+  let jimpImage = null;
+  
+  /**
+   * Get or create the Jimp image instance
+   * @returns {Promise<Jimp>} Jimp image instance
+   */
+  async function getJimpImage() {
+    if (!jimpImage) {
+      try {
+        jimpImage = await Jimp.read(originalBuffer);
+      } catch (error) {
+        console.error('Error reading image with Jimp:', error);
+        // Create a fallback 1x1 transparent image if reading fails
+        jimpImage = new Jimp(1, 1, 0x00000000);
+      }
+    }
+    return jimpImage;
+  }
 
   /**
-   * Get the metadata of the image 
-   * This performs basic parsing to extract dimensions
+   * Get the metadata of the image
+   * @returns {Promise<Object>} Image metadata
    */
   async function getMetadata() {
-    if (_data.width && _data.height) {
-      return { 
-        width: _data.width, 
-        height: _data.height, 
-        format: _data.format 
-      };
-    }
-
     try {
-      // Check for JPEG format
-      if (originalBuffer[0] === 0xFF && originalBuffer[1] === 0xD8) {
-        _data.format = 'jpeg';
-        
-        // Simple JPEG parser to get dimensions
-        let offset = 2; // Skip SOI marker
-        
-        while (offset < originalBuffer.length) {
-          // Find markers (they start with 0xFF)
-          if (originalBuffer[offset] !== 0xFF) {
-            offset++;
-            continue;
-          }
-          
-          // Get marker type
-          const marker = originalBuffer[offset + 1];
-          
-          // Skip padding or markers without size info
-          if (marker === 0xFF || marker === 0xD0 || marker === 0xD1 || 
-              marker === 0xD2 || marker === 0xD3 || marker === 0xD4 || 
-              marker === 0xD5 || marker === 0xD6 || marker === 0xD7) {
-            offset += 2;
-            continue;
-          }
-          
-          // Get segment size
-          const size = (originalBuffer[offset + 2] << 8) + originalBuffer[offset + 3];
-          
-          // SOF markers contain dimension info
-          if (marker === JPEG_SOF0 || marker === JPEG_SOF2 || 
-              (marker >= 0xC0 && marker <= 0xCF && marker !== 0xC4 && marker !== 0xC8 && marker !== 0xCC)) {
-            _data.height = (originalBuffer[offset + 5] << 8) + originalBuffer[offset + 6];
-            _data.width = (originalBuffer[offset + 7] << 8) + originalBuffer[offset + 8];
-            break;
-          }
-          
-          // Move to the next segment
-          offset += size + 2;
-        }
-      } 
-      // Check for PNG format
-      else if (originalBuffer[0] === 0x89 && 
-               originalBuffer[1] === 0x50 && 
-               originalBuffer[2] === 0x4E && 
-               originalBuffer[3] === 0x47) {
-        _data.format = 'png';
-        
-        // PNG stores dimensions at a fixed position in the IHDR chunk
-        _data.width = originalBuffer.readUInt32BE(16);
-        _data.height = originalBuffer.readUInt32BE(20);
-      }
-      
-      // If we couldn't determine the dimensions, set default values
-      if (!_data.width || !_data.height) {
-        _data.width = 800; // Default width
-        _data.height = 600; // Default height
-        _data.format = 'unknown';
-      }
-      
-      return { 
-        width: _data.width, 
-        height: _data.height, 
-        format: _data.format 
+      const image = await getJimpImage();
+      return {
+        width: image.width,
+        height: image.height,
+        format: 'image/jpeg' // Jimp 1.6.0 doesn't have getMIME()
       };
     } catch (error) {
       console.error('Error getting image metadata:', error);
-      _data.width = 800; // Default width
-      _data.height = 600; // Default height
-      _data.format = 'unknown';
-      
-      return { 
-        width: _data.width, 
-        height: _data.height, 
-        format: _data.format 
+      return {
+        width: 800,
+        height: 600,
+        format: 'image/jpeg'
       };
     }
   }
 
   /**
-   * Decode image to raw pixel data (simplified and partial implementation)
-   * @returns {Uint8Array} Raw pixel data
+   * Decode image to raw pixel data
+   * @returns {Promise<Uint8Array>} Raw RGB pixel data (3 bytes per pixel)
    */
   async function decode() {
-    // If we already have decoded pixels, return them
-    if (_data.pixels) {
-      return _data.pixels;
+    try {
+      const image = await getJimpImage();
+      const width = image.width;
+      const height = image.height;
+      
+      // Create RGB pixel array (3 bytes per pixel)
+      const pixels = new Uint8Array(width * height * 3);
+      
+      // Extract RGB data from Jimp image
+      let pixelIndex = 0;
+      image.scan(0, 0, width, height, function (x, y, idx) {
+        // Jimp stores pixels as RGBA, we need RGB
+        pixels[pixelIndex] = this.bitmap.data[idx];     // R
+        pixels[pixelIndex + 1] = this.bitmap.data[idx + 1]; // G
+        pixels[pixelIndex + 2] = this.bitmap.data[idx + 2]; // B
+        pixelIndex += 3;
+      });
+      
+      return pixels;
+    } catch (error) {
+      console.error('Error decoding image:', error);
+      // Return a minimal fallback
+      return new Uint8Array(3); // 1x1 black pixel
     }
-    
-    // Get image metadata if not already extracted
-    if (!_data.width || !_data.height) {
-      await getMetadata();
-    }
-    
-    // Create pixel data array
-    const pixels = new Uint8Array(_data.width * _data.height * 3);
-    
-    if (_data.format === 'jpeg') {
-      // Improved JPEG approximation with better spatial variation
-      // Find the actual compressed image data (after all headers)
-      let dataStart = 0;
-      
-      // Look for SOS (Start of Scan) marker 0xFF 0xDA which marks the start of compressed data
-      for (let i = 0; i < originalBuffer.length - 1; i++) {
-        if (originalBuffer[i] === 0xFF && originalBuffer[i + 1] === 0xDA) {
-          // Skip the SOS marker and its length field
-          dataStart = i + 4 + originalBuffer.readUInt16BE(i + 2);
-          break;
-        }
-      }
-      
-      if (dataStart === 0) {
-        // Fallback: look for a reasonable amount of data after headers
-        dataStart = Math.min(1000, Math.floor(originalBuffer.length * 0.1));
-      }
-      
-      // Use the compressed data to generate spatially-aware pseudo-pixel data
-      const compressedData = originalBuffer.slice(dataStart);
-      
-      // Create a deterministic but spatially-varying pattern
-      // This simulates how JPEG compression works with 8x8 blocks
-      const blockSize = 8;
-      const blocksPerRow = Math.ceil(_data.width / blockSize);
-      const blocksPerCol = Math.ceil(_data.height / blockSize);
-      
-      for (let blockRow = 0; blockRow < blocksPerCol; blockRow++) {
-        for (let blockCol = 0; blockCol < blocksPerRow; blockCol++) {
-          // Calculate a base color for this block based on its position and image data
-          const blockIndex = blockRow * blocksPerRow + blockCol;
-          const dataIndex = (blockIndex * 17) % compressedData.length; // 17 is prime for good distribution
-          
-          // Get base values from compressed data
-          const baseR = compressedData[dataIndex % compressedData.length];
-          const baseG = compressedData[(dataIndex + 1) % compressedData.length];
-          const baseB = compressedData[(dataIndex + 2) % compressedData.length];
-          
-          // Add spatial variation within the block
-          for (let y = 0; y < blockSize && (blockRow * blockSize + y) < _data.height; y++) {
-            for (let x = 0; x < blockSize && (blockCol * blockSize + x) < _data.width; x++) {
-              const pixelY = blockRow * blockSize + y;
-              const pixelX = blockCol * blockSize + x;
-              const pixelIndex = (pixelY * _data.width + pixelX) * 3;
-              
-              if (pixelIndex < pixels.length - 2) {
-                // Create variation within the block using a deterministic pattern
-                const variation = ((x + y * 3 + blockIndex * 7) % 64) - 32; // -32 to +31 variation
-                
-                pixels[pixelIndex] = Math.max(0, Math.min(255, baseR + variation));
-                pixels[pixelIndex + 1] = Math.max(0, Math.min(255, baseG + variation));
-                pixels[pixelIndex + 2] = Math.max(0, Math.min(255, baseB + variation));
-              }
-            }
-          }
-        }
-      }
-      
-    } else if (_data.format === 'png') {
-      // For PNG, find the IDAT chunk(s) which contain the compressed image data
-      const dataStart = originalBuffer.indexOf(Buffer.from([0x49, 0x44, 0x41, 0x54])); // IDAT chunk
-      if (dataStart > 0) {
-        // Skip the IDAT header and use the compressed data
-        const compressedData = originalBuffer.slice(dataStart + 8);
-        const step = Math.max(1, Math.floor(compressedData.length / (pixels.length / 3)));
-        
-        let pixelIndex = 0;
-        for (let i = 0; i < compressedData.length - 2 && pixelIndex < pixels.length; i += step) {
-          pixels[pixelIndex] = compressedData[i];
-          pixels[pixelIndex + 1] = compressedData[i + 1];
-          pixels[pixelIndex + 2] = compressedData[i + 2];
-          
-          pixelIndex += 3;
-        }
-        
-        // Fill remaining pixels
-        while (pixelIndex < pixels.length) {
-          const sourceIndex = pixelIndex % Math.min(pixelIndex, pixels.length - 3);
-          pixels[pixelIndex] = pixels[sourceIndex];
-          pixels[pixelIndex + 1] = pixels[sourceIndex + 1];
-          pixels[pixelIndex + 2] = pixels[sourceIndex + 2];
-          pixelIndex += 3;
-        }
-      } else {
-        // Fallback for PNG without clear IDAT
-        const hashSum = originalBuffer.reduce((sum, byte, i) => sum + byte * (i % 100 + 1), 0);
-        const seed = hashSum % 1000;
-        
-        for (let i = 0; i < pixels.length; i++) {
-          pixels[i] = (originalBuffer[i % originalBuffer.length] + seed + i) % 256;
-        }
-      }
-    } else {
-      // For unknown formats, generate consistent pattern based on buffer content
-      const hashSum = originalBuffer.reduce((sum, byte, i) => sum + byte * (i % 100 + 1), 0);
-      const seed = hashSum % 1000;
-      
-      for (let i = 0; i < pixels.length; i++) {
-        pixels[i] = (originalBuffer[i % originalBuffer.length] + seed + i) % 256;
-      }
-    }
-    
-    _data.pixels = pixels;
-    return pixels;
   }
 
   /**
    * Convert image to grayscale
-   * @returns {Uint8Array} Grayscale pixel data
+   * @returns {Promise<Uint8Array>} Grayscale pixel data (1 byte per pixel)
    */
   async function toGrayscale() {
-    const pixels = await decode();
-    const width = _data.width;
-    const height = _data.height;
-    
-    // Create grayscale pixel array (1 byte per pixel)
-    const grayscale = new Uint8Array(width * height);
-    
-    // Convert RGB to grayscale using luminance formula
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const idx = (y * width + x) * 3;
-        const r = pixels[idx];
-        const g = pixels[idx + 1];
-        const b = pixels[idx + 2];
-        
-        // Standard luminance formula
-        grayscale[y * width + x] = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-      }
+    try {
+      const image = await getJimpImage();
+      const grayscaleImage = image.clone().greyscale();
+      
+      const width = grayscaleImage.width;
+      const height = grayscaleImage.height;
+      
+      // Create grayscale pixel array (1 byte per pixel)
+      const grayscale = new Uint8Array(width * height);
+      
+      // Extract grayscale data
+      let pixelIndex = 0;
+      grayscaleImage.scan(0, 0, width, height, function (x, y, idx) {
+        // For grayscale, R=G=B, so we can use any channel
+        grayscale[pixelIndex] = this.bitmap.data[idx];
+        pixelIndex++;
+      });
+      
+      return grayscale;
+    } catch (error) {
+      console.error('Error converting to grayscale:', error);
+      // Return a minimal fallback
+      return new Uint8Array(1); // 1x1 black pixel
     }
-    
-    return grayscale;
   }
 
   /**
@@ -283,135 +126,187 @@ function createImageProcessor(buffer) {
    * @returns {Object} New image processor with resized image
    */
   function resize(width, height = null, options = {}) {
-    // If height is null, maintain aspect ratio
-    if (height === null && _data.height && _data.width) {
-      height = Math.round(_data.height * (width / _data.width));
-    }
-    
-    // Create a new processor instance
-    const newProcessor = createImageProcessor(originalBuffer);
-    
-    // Override the metadata and decode functions to return resized values
-    newProcessor.getMetadata = async function() {
-      return { width, height, format: _data.format };
-    };
-     // Override the decode function to perform resizing
-    newProcessor.decode = async function() {
-      const sourcePixels = await decode();
-      const sourceWidth = _data.width;
-      const sourceHeight = _data.height;
-      
-      if (!sourcePixels) return null;
-      
-      const targetPixels = new Uint8Array(width * height * 3);
-      
-      // Simple nearest-neighbor scaling (fast but low quality)
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          // Map target coordinates to source coordinates
-          const srcX = Math.floor(x * sourceWidth / width);
-          const srcY = Math.floor(y * sourceHeight / height);
+    // Create a new processor instance for the resized image
+    const newProcessor = {
+      getMetadata: async function() {
+        try {
+          const image = await getJimpImage();
+          let targetWidth = width;
+          let targetHeight = height;
           
-          // Get source pixel
-          const srcIdx = (srcY * sourceWidth + srcX) * 3;
-          const tgtIdx = (y * width + x) * 3;
+          // If height is null, maintain aspect ratio
+          if (targetHeight === null) {
+            const aspectRatio = image.height / image.width;
+            targetHeight = Math.round(targetWidth * aspectRatio);
+          }
           
-          // Copy RGB values
-          targetPixels[tgtIdx] = sourcePixels[srcIdx];
-          targetPixels[tgtIdx + 1] = sourcePixels[srcIdx + 1];
-          targetPixels[tgtIdx + 2] = sourcePixels[srcIdx + 2];
+          return {
+            width: targetWidth,
+            height: targetHeight,
+            format: 'image/jpeg'
+          };
+        } catch (error) {
+          console.error('Error getting resized metadata:', error);
+          return { width, height: height || width, format: 'image/jpeg' };
         }
-      }
-      
-      return targetPixels;
-    };
+      },
 
-    // Override the toGrayscale function to work with resized dimensions
-    newProcessor.toGrayscale = async function() {
-      const pixels = await newProcessor.decode(); // Use the overridden decode function
-      
-      // Create grayscale pixel array (1 byte per pixel) using resized dimensions
-      const grayscale = new Uint8Array(width * height);
-      
-      // Convert RGB to grayscale using luminance formula
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const idx = (y * width + x) * 3;
-          const r = pixels[idx];
-          const g = pixels[idx + 1];
-          const b = pixels[idx + 2];
+      decode: async function() {
+        try {
+          const image = await getJimpImage();
+          let targetWidth = width;
+          let targetHeight = height;
           
-          // Standard luminance formula
-          grayscale[y * width + x] = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+          // If height is null, maintain aspect ratio
+          if (targetHeight === null) {
+            const aspectRatio = image.height / image.width;
+            targetHeight = Math.round(targetWidth * aspectRatio);
+          }
+          
+          // Resize with high-quality algorithm
+          const resizedImage = image.clone().resize({ w: targetWidth, h: targetHeight });
+          
+          // Extract RGB data
+          const pixels = new Uint8Array(targetWidth * targetHeight * 3);
+          let pixelIndex = 0;
+          
+          resizedImage.scan(0, 0, targetWidth, targetHeight, function (x, y, idx) {
+            pixels[pixelIndex] = this.bitmap.data[idx];     // R
+            pixels[pixelIndex + 1] = this.bitmap.data[idx + 1]; // G
+            pixels[pixelIndex + 2] = this.bitmap.data[idx + 2]; // B
+            pixelIndex += 3;
+          });
+          
+          return pixels;
+        } catch (error) {
+          console.error('Error resizing image:', error);
+          return new Uint8Array(width * (height || width) * 3);
         }
+      },
+
+      toGrayscale: async function() {
+        try {
+          const image = await getJimpImage();
+          let targetWidth = width;
+          let targetHeight = height;
+          
+          // If height is null, maintain aspect ratio
+          if (targetHeight === null) {
+            const aspectRatio = image.height / image.width;
+            targetHeight = Math.round(targetWidth * aspectRatio);
+          }
+          
+          // Resize and convert to grayscale with high quality
+          const processedImage = image.clone()
+            .resize({ w: targetWidth, h: targetHeight })
+            .greyscale();
+          
+          // Extract grayscale data
+          const grayscale = new Uint8Array(targetWidth * targetHeight);
+          let pixelIndex = 0;
+          
+          processedImage.scan(0, 0, targetWidth, targetHeight, function (x, y, idx) {
+            grayscale[pixelIndex] = this.bitmap.data[idx];
+            pixelIndex++;
+          });
+          
+          return grayscale;
+        } catch (error) {
+          console.error('Error resizing and converting to grayscale:', error);
+          return new Uint8Array(width * (height || width));
+        }
+      },
+
+      resize: function(newWidth, newHeight = null, newOptions = {}) {
+        return resize(newWidth, newHeight, newOptions);
+      },
+
+      blur: function(sigma = 1.0) {
+        return blur(sigma);
       }
-      
-      return grayscale;
     };
 
     return newProcessor;
   }
-  
+
   /**
-   * Apply simple blur effect (for noise reduction)
+   * Apply Gaussian blur effect
    * @param {number} sigma - Blur sigma/radius
    * @returns {Object} New image processor with blurred image
    */
   function blur(sigma = 1.0) {
-    // Create a new processor instance
-    const newProcessor = createImageProcessor(originalBuffer);
-    
-    // Copy metadata from original
-    newProcessor.getMetadata = getMetadata;
-    
-    // Override the decode function to apply blur
-    newProcessor.decode = async function() {
-      const sourcePixels = await decode();
-      const width = _data.width;
-      const height = _data.height;
-      
-      if (!sourcePixels) return null;
-      
-      const blurredPixels = new Uint8Array(width * height * 3);
-      
-      // Copy pixels first
-      blurredPixels.set(sourcePixels);
-      
-      // Only apply blur if sigma is significant
-      if (sigma >= 0.3) {
-        // Simple box blur - not as good as Gaussian but faster
-        const radius = Math.floor(sigma * 2);
-        
-        // Apply horizontal blur
-        for (let y = 0; y < height; y++) {
-          for (let x = 0; x < width; x++) {
-            let rSum = 0, gSum = 0, bSum = 0;
-            let count = 0;
-            
-            // Average neighboring pixels
-            for (let i = -radius; i <= radius; i++) {
-              const nx = x + i;
-              if (nx < 0 || nx >= width) continue;
-              
-              const idx = (y * width + nx) * 3;
-              rSum += sourcePixels[idx];
-              gSum += sourcePixels[idx + 1];
-              bSum += sourcePixels[idx + 2];
-              count++;
-            }
-            
-            // Write blurred pixel
-            const idx = (y * width + x) * 3;
-            blurredPixels[idx] = Math.round(rSum / count);
-            blurredPixels[idx + 1] = Math.round(gSum / count);
-            blurredPixels[idx + 2] = Math.round(bSum / count);
-          }
+    // Create a new processor instance for the blurred image
+    const newProcessor = {
+      getMetadata: getMetadata,
+
+      decode: async function() {
+        try {
+          const image = await getJimpImage();
+          
+          // Apply Gaussian blur with Jimp's high-quality algorithm
+          // Jimp uses radius instead of sigma, convert sigma to radius
+          const radius = Math.max(1, Math.round(sigma * 2));
+          const blurredImage = image.clone().blur(radius);
+          
+          const width = blurredImage.width;
+          const height = blurredImage.height;
+          
+          // Extract RGB data
+          const pixels = new Uint8Array(width * height * 3);
+          let pixelIndex = 0;
+          
+          blurredImage.scan(0, 0, width, height, function (x, y, idx) {
+            pixels[pixelIndex] = this.bitmap.data[idx];     // R
+            pixels[pixelIndex + 1] = this.bitmap.data[idx + 1]; // G
+            pixels[pixelIndex + 2] = this.bitmap.data[idx + 2]; // B
+            pixelIndex += 3;
+          });
+          
+          return pixels;
+        } catch (error) {
+          console.error('Error applying blur:', error);
+          // Fallback to original decode
+          return await decode();
         }
+      },
+
+      toGrayscale: async function() {
+        try {
+          const image = await getJimpImage();
+          
+          // Apply blur and convert to grayscale
+          const radius = Math.max(1, Math.round(sigma * 2));
+          const processedImage = image.clone().blur(radius).greyscale();
+          
+          const width = processedImage.width;
+          const height = processedImage.height;
+          
+          // Extract grayscale data
+          const grayscale = new Uint8Array(width * height);
+          let pixelIndex = 0;
+          
+          processedImage.scan(0, 0, width, height, function (x, y, idx) {
+            grayscale[pixelIndex] = this.bitmap.data[idx];
+            pixelIndex++;
+          });
+          
+          return grayscale;
+        } catch (error) {
+          console.error('Error applying blur and converting to grayscale:', error);
+          // Fallback to original toGrayscale
+          return await toGrayscale();
+        }
+      },
+
+      resize: function(width, height = null, options = {}) {
+        return resize(width, height, options);
+      },
+
+      blur: function(newSigma = 1.0) {
+        return blur(newSigma);
       }
-      
-      return blurredPixels;
     };
-    
+
     return newProcessor;
   }
 
