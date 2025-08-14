@@ -179,4 +179,4 @@ AutoSlides Extractor 遵循 **MIT 许可证** 发布。这意味着您可以自�
 
 ## 联系我们
 
-如需报告问题或提出建议，请发送邮件至：[info@bitech.edu.kg](mailto:info@bitech.edu.kg)
+如需报告问题或提出建议，请发送邮件至：[info@ruc.edu.kg](mailto:info@ruc.edu.kg)
